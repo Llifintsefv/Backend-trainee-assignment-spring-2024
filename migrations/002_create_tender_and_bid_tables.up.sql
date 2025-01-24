@@ -35,7 +35,7 @@ CREATE TYPE bid_status AS ENUM (
     'REJECTED'
 );
 
--- Создание ENUM типа для типов авторов предложений
+
 CREATE TYPE bid_author_type AS ENUM (
     'Organization',
     'User'
