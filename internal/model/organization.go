@@ -11,12 +11,12 @@ const (
 )
 
 type Organization struct {
-	id          string `json:"id"`
-	name        string `json:"name"`
-	description string `json:"description"`
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 	Type        OrganizationType `json:"type" `
-	created_at time.Time `json:"created_at"`
-	updated_at time.Time `json:"updated_at"`
+	Created_at time.Time `json:"created_at"`
+	Updated_at time.Time `json:"updated_at"`
 }
 
 type OrganizationResponsible struct {
