@@ -9,6 +9,7 @@ import (
 func SetupRouter(tenderHandler *handler.TenderHandler) *fiber.App {
 	app := fiber.New()
 
+	app.Get("/api/ping", handler.PingHandler)
 
 	return app
 }
