@@ -29,3 +29,11 @@ type Tender struct {
 	CreatedAt      time.Time         `json:"createdAt"`
 	UpdatedAt      time.Time         `json:"updatedAt"`
 }
+
+type CreateTenderRequest struct {
+	Name         string            `json:"name" `
+	Description  string            `json:"description" `
+	ServiceType  TenderServiceType `json:"serviceType" ` 
+	OrganizationID string            `json:"organizationId" "`
+	CreatorUsername string            `json:"creatorUsername" `
+}

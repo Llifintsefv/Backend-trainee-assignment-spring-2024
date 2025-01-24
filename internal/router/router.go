@@ -11,5 +11,7 @@ func SetupRouter(tenderHandler *handler.TenderHandler,pingHandler *handler.PingH
 
 	app.Get("/api/ping", pingHandler.Ping)
 
+	app.Post("/tender/new",tenderHandler.CreateTender)
+
 	return app
 }
