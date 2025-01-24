@@ -6,10 +6,10 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/repository/postgres"
 	"Backend-trainee-assignment-autumn-2024/internal/router"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
-	"Backend-trainee-assignment-autumn-2024/internal/storage"
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,20 +18,25 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	slog.SetDefault(logger)
+
 	cfg := config.NewConfig()
-	db, err := storage.NewDB(cfg.DBConnStr)
+	db, err := postgres.NewDB(cfg.DBConnStr)
 	if err != nil {
+		slog.Error("failed to connect to database", err)
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	userRepository := postgres.NewUserRepository(db)
-	organizationRepository := postgres.NewOrganizationRepository(db)
-	tenderRepository := postgres.NewTenderRepository(db)
-	tenderService := service.NewTenderService(tenderRepository, userRepository, organizationRepository)
-	tenderHandler := handler.NewTenderHandler(tenderService)
+	userRepository := postgres.NewUserRepository(db,logger)
+	organizationRepository := postgres.NewOrganizationRepository(db,logger)
+	tenderRepository := postgres.NewTenderRepository(db,logger)
+	tenderService := service.NewTenderService(tenderRepository, userRepository, organizationRepository,logger)
+	tenderHandler := handler.NewTenderHandler(tenderService,logger)
+	pingHandler := handler.NewPingHandler(logger)
 
-	app := router.SetupRouter(tenderHandler)
+	app := router.SetupRouter(tenderHandler,pingHandler)
 
 
 

@@ -1,7 +1,19 @@
 package handler
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"log/slog"
 
-func PingHandler(c *fiber.Ctx) error {
+	"github.com/gofiber/fiber/v2"
+)
+
+
+type PingHandler struct {
+	logger *slog.Logger
+}
+
+func NewPingHandler(logger *slog.Logger) *PingHandler {
+	return &PingHandler{logger: logger}
+}
+func (p *PingHandler)Ping(c *fiber.Ctx) error {
 	return c.SendString("ok")
 }
