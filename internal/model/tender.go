@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 type TenderStatus string
 
 const (
@@ -16,6 +19,16 @@ const (
 	TenderServiceTypeDelivery     TenderServiceType = "Delivery"
 	TenderServiceTypeManufacture  TenderServiceType = "Manufacture"
 )
+
+func IsValidServiceType(serviceType TenderServiceType) bool {
+    lowerServiceType := strings.ToLower(string(serviceType))
+    switch lowerServiceType {
+    case "construction", "delivery", "manufacture":
+        return true
+    default:
+        return false
+    }
+}
 
 type Tender struct {
 	ID             string            `json:"id"`
