@@ -118,3 +118,39 @@ func (r *tenderRepository) GetTenders(ctx context.Context, limit int, offset int
 
 	return tenders, nil
 }
+
+
+func (r *tenderRepository) GetTenderById(ctx context.Context, id string) (*model.Tender, error) {
+
+	stmt, err := r.db.PrepareContext(ctx, `
+		SELECT id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
+		FROM tender
+		WHERE id = $1
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement for getting tender by id: %w", err)
+	}
+	defer stmt.Close()
+
+	tender := model.Tender{}
+	err = stmt.QueryRowContext(ctx, id).Scan(
+		&tender.ID,
+		&tender.Name,
+		&tender.Description,
+		&tender.ServiceType,
+		&tender.OrganizationID,
+		&tender.CreatorUsername,
+		&tender.Status,	
+		&tender.Version,
+		&tender.CreatedAt,
+		&tender.UpdatedAt,
+	)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			r.logger.ErrorContext(ctx, "Error getting tender by id", slog.Any("error", err))
+			return nil, fmt.Errorf("failed to execute query for getting tender by id: %w", err)
+		}
+	}
+
+	return &tender, nil
+}

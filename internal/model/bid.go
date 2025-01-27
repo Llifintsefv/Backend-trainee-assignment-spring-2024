@@ -42,6 +42,7 @@ type Bid struct {
 	TenderID      string        `json:"tenderId"`
 	AuthorType    BidAuthorType `json:"authorType"`
 	AuthorID      string        `json:"authorId"`
+	CreatorUsername string        `json:"creatorUsername"`
 	Version       int           `json:"version"`
 	CreatedAt     time.Time     `json:"createdAt"`
 	UpdatedAt     time.Time     `json:"updatedAt"`

@@ -17,13 +17,11 @@ type TenderService interface {
 
 type tenderService struct {
 	TenderRepository repository.TenderRepository
-	UserRepository   repository.UserRepository
-	OrganizationRepository   repository.OrganizationRepository
 	logger *slog.Logger
 }
 
-func NewTenderService(tenderRepository repository.TenderRepository, userRepository repository.UserRepository, organizationRepository repository.OrganizationRepository, logger *slog.Logger) TenderService {
-	return &tenderService{tenderRepository, userRepository, organizationRepository, logger}
+func NewTenderService(tenderRepository repository.TenderRepository, logger *slog.Logger) TenderService {
+	return &tenderService{tenderRepository, logger}
 }
 
 func (s *tenderService) CreateTender(ctx context.Context, createTenderRequest *model.CreateTenderRequest) (*model.Tender, error) {

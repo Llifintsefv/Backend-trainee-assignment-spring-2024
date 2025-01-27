@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func SetupRouter(tenderHandler *handler.TenderHandler,pingHandler *handler.PingHandler) *fiber.App {
+func SetupRouter(tenderHandler *handler.TenderHandler,pingHandler *handler.PingHandler,bidHandler *handler.BidHandler) *fiber.App {
 	app := fiber.New()
 
 	app.Get("/api/ping", pingHandler.Ping)
@@ -14,6 +14,8 @@ func SetupRouter(tenderHandler *handler.TenderHandler,pingHandler *handler.PingH
 	app.Post("/tender/new",tenderHandler.CreateTender)
 
 	app.Get("/tenders",tenderHandler.GetTenders)
+
+	app.Post("/bids/new",bidHandler.CreateBid)
 
 	return app
 }

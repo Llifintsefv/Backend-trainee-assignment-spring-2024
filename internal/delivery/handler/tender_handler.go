@@ -49,7 +49,7 @@ func (h *TenderHandler) GetTenders(c *fiber.Ctx) error {
 	limitStr := c.Query("limit", "10")
 	offsetStr := c.Query("offset", "0")
 	queryArgs := c.Context().QueryArgs()
-serviceTypesQuery := queryArgs.PeekMulti("service_type")
+	serviceTypesQuery := queryArgs.PeekMulti("service_type")
 
 	limit,err := strconv.Atoi(limitStr)
 	if err != nil {
@@ -74,13 +74,13 @@ serviceTypesQuery := queryArgs.PeekMulti("service_type")
 	}
 
 	serviceTypes := make([]model.TenderServiceType, 0, len(serviceTypesQuery))
-for _, st := range serviceTypesQuery {
-	tenderServiceType := model.TenderServiceType(string(st)) // Конвертация []byte в string
-	if !model.IsValidServiceType(tenderServiceType) {
-		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", "Invalid service type"))
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"reason": "Invalid service type",
-		})
+	for _, st := range serviceTypesQuery {
+		tenderServiceType := model.TenderServiceType(string(st)) 
+		if !model.IsValidServiceType(tenderServiceType) {
+			h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", "Invalid service type"))
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"reason": "Invalid service type",
+			})
 	}
 	
 	serviceTypes = append(serviceTypes, tenderServiceType)

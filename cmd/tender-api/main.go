@@ -31,12 +31,20 @@ func main() {
 
 	userRepository := postgres.NewUserRepository(db,logger)
 	organizationRepository := postgres.NewOrganizationRepository(db,logger)
+	bidRepository := postgres.NewBidRepository(db,logger)
 	tenderRepository := postgres.NewTenderRepository(db,logger)
-	tenderService := service.NewTenderService(tenderRepository, userRepository, organizationRepository,logger)
+
+	
+	tenderService := service.NewTenderService(tenderRepository,logger)
+	bidService := service.NewBidService(bidRepository,tenderRepository,organizationRepository,userRepository,logger)
+	
 	tenderHandler := handler.NewTenderHandler(tenderService,logger)
+	bidHandler := handler.NewBidHandler(bidService,logger)
+
+
 	pingHandler := handler.NewPingHandler(logger)
 
-	app := router.SetupRouter(tenderHandler,pingHandler)
+	app := router.SetupRouter(tenderHandler,pingHandler,bidHandler)
 
 
 
