@@ -37,16 +37,21 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 		return nil, fmt.Errorf("Error getting tender")
 	}
 
-
+	var authorID string
 	authorType := model.BidAuthorTypeUser 
 	if bidRequest.OrganizationID != "" {
 		authorType = model.BidAuthorTypeOrganization
+		authorID = bidRequest.OrganizationID
 		_, err = s.organizationRepository.GetOrganizationById(ctx, bidRequest.OrganizationID)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "Error getting organization", slog.Any("error", err))
 			return nil, fmt.Errorf("Error getting organization")
 		}
+	} else {
+		authorID = bidRequest.CreatorUsername
 	}
+
+
 
 	_,err = s.userRepository.GetUserByUsername(ctx, bidRequest.CreatorUsername)
 	if err != nil {
@@ -63,12 +68,11 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 	bid.Status = bidRequest.Status
 	bid.TenderID = bidRequest.TenderID
 	bid.AuthorType = authorType
-	bid.AuthorID = bidRequest.AuthorID
+	bid.AuthorID = authorID
 	bid.CreatorUsername = bidRequest.CreatorUsername
 	bid.Version = 1
 	bid.CreatedAt = time.Now()
 	bid.UpdatedAt = time.Now()
-
 
 
 	bidResponse,err := s.BidRepository.CreateBid(ctx, bid)

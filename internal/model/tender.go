@@ -7,9 +7,9 @@ import (
 type TenderStatus string
 
 const (
-	TenderStatusCreated   TenderStatus = "CREATED"   
-	TenderStatusPublished TenderStatus = "PUBLISHED" 
-	TenderStatusClosed    TenderStatus = "CLOSED"    
+	TenderStatusCreated   TenderStatus = "Created"   
+	TenderStatusPublished TenderStatus = "Publish" 
+	TenderStatusClosed    TenderStatus = "Closed"    
 )
 
 type TenderServiceType string

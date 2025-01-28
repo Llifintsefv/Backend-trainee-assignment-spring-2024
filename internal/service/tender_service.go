@@ -40,7 +40,7 @@ func (s *tenderService) CreateTender(ctx context.Context, createTenderRequest *m
 	tender.OrganizationID = createTenderRequest.OrganizationID
 	tender.CreatorUsername = createTenderRequest.CreatorUsername
 	tender.Version = 1
-	tender.Status = "CREATED"
+	tender.Status = model.TenderStatusCreated
 
 	tender, err := s.TenderRepository.CreateTender(ctx, tender)
 	if err != nil {

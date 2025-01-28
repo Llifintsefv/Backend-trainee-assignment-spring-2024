@@ -2,8 +2,8 @@ package handler
 
 import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
+	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
-	"fmt"
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,17 +22,17 @@ func (h *BidHandler) CreateBid(c *fiber.Ctx) error {
 	createBidRequest := new(model.CreateBidRequest)
 	ctx := c.Context()
 	err := c.BodyParser(createBidRequest)
-	fmt.Println(createBidRequest)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error parsing request body", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"reason": "Invalid request body"})
 	}
 
-	if createBidRequest.TenderID == "" || createBidRequest.Name == ""  || createBidRequest.Description == "" {
-		h.logger.ErrorContext(ctx, "Error parsing request body", slog.Any("error", err))
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"reason": "Invalid request body"})
+	err = utils.ValidateStruct(createBidRequest)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"reason": err.Error()})
 	}
-
+	
 	bid, err := h.service.CreateBid(ctx, createBidRequest)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error creating bid", slog.Any("error", err))

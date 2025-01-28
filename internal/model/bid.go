@@ -23,14 +23,12 @@ const (
 
 
 type CreateBidRequest struct {
-	Name          string      `json:"name" `
-	Description   string      `json:"description" `
-	Status        BidStatus   `json:"status" `
-	TenderID      string      `json:"tenderId"`    
-	OrganizationID string      `json:"organizationId,omitempty,uuid"`     
-	CreatorUsername string      `json:"creatorUsername" `
-	AuthorType    BidAuthorType `json:"authorType"` 
-	AuthorID      string      `json:"authorId" `     
+	Name          string      `json:"name" validate:"required,max=255"` 
+	Description   string      `json:"description" validate:"required,max=1000"` 
+	Status        BidStatus   `json:"status" validate:"required,bidstatus"`    
+	TenderID      string      `json:"tenderId" validate:"required"`         
+	OrganizationID string      `json:"organizationId,omitempty" validate:"omitempty"` 
+	CreatorUsername string      `json:"creatorUsername" validate:"required"`     
 }
 
 

@@ -1,8 +1,8 @@
 
 CREATE TYPE tender_status AS ENUM (
-    'CREATED',
-    'PUBLISHED',
-    'CLOSED'
+    'Created',
+    'Published',
+    'Closed'
 );
 
 
@@ -28,11 +28,11 @@ CREATE TABLE tender (
 
 
 CREATE TYPE bid_status AS ENUM (
-    'CREATED',
-    'PUBLISHED',
-    'CANCELED',
-    'APPROVED',
-    'REJECTED'
+    'Created',
+    'Published',
+    'Canceled',
+    'Approved',
+    'Rejected'
 );
 
 
