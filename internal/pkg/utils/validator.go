@@ -30,6 +30,16 @@ func init() {
 			return false
 		}
 	})
+
+	ValidatorInstance.RegisterValidation("servicetype", func(fl validator.FieldLevel) bool {
+		serviceType := model.TenderServiceType(fl.Field().String())
+		switch serviceType {
+		case model.TenderServiceTypeConstruction, model.TenderServiceTypeDelivery, model.TenderServiceTypeManufacture:
+			return true
+		default:
+			return false
+		}
+	})
 }
 
 

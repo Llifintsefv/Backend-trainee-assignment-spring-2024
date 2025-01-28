@@ -1,7 +1,6 @@
 package model
 
 import (
-	"strings"
 	"time"
 )
 type TenderStatus string
@@ -20,15 +19,7 @@ const (
 	TenderServiceTypeManufacture  TenderServiceType = "Manufacture"
 )
 
-func IsValidServiceType(serviceType TenderServiceType) bool {
-    lowerServiceType := strings.ToLower(string(serviceType))
-    switch lowerServiceType {
-    case "construction", "delivery", "manufacture":
-        return true
-    default:
-        return false
-    }
-}
+
 
 type Tender struct {
 	ID             string            `json:"id"`
@@ -49,4 +40,10 @@ type CreateTenderRequest struct {
 	ServiceType  TenderServiceType `json:"serviceType" ` 
 	OrganizationID string            `json:"organizationId" "`
 	CreatorUsername string            `json:"creatorUsername" `
+}
+
+type GetTendersRequest struct {
+	Limit        int               `query:"limit" validate:"min=1,max=100"`
+	Offset       int               `query:"offset" validate:"min=0"`
+	ServiceTypes []TenderServiceType `query:"service_type" validate:"dive,servicetype"`
 }

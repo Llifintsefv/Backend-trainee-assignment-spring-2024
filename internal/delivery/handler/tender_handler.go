@@ -2,9 +2,9 @@ package handler
 
 import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
+	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
 	"log/slog"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -46,52 +46,31 @@ func (h *TenderHandler) CreateTender(c *fiber.Ctx) error {
 func (h *TenderHandler) GetTenders(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	limitStr := c.Query("limit", "10")
-	offsetStr := c.Query("offset", "0")
-	queryArgs := c.Context().QueryArgs()
-	serviceTypesQuery := queryArgs.PeekMulti("service_type")
+	getTendersRequest := new(model.GetTendersRequest)
 
-	limit,err := strconv.Atoi(limitStr)
-	if err != nil {
-		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"reason": "Error getting tenders"})
+	if err := c.QueryParser(getTendersRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"reason": "Invalid query parameters"})
 	}
 
-	if limit < 1 || limit > 100 {
-		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", "Invalid limit"))
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"reason": "Invalid limit"})
+
+	if err := utils.ValidateStruct(getTendersRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"reason": err.Error()})
 	}
 
-	offset,err := strconv.Atoi(offsetStr)
-	if err != nil {
-		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"reason": "Error getting tenders"})
-	}
 
-	if offset < 0 {
-		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", "Invalid offset"))
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"reason": "Invalid offset"})
-	}
 
-	serviceTypes := make([]model.TenderServiceType, 0, len(serviceTypesQuery))
-	for _, st := range serviceTypesQuery {
-		tenderServiceType := model.TenderServiceType(string(st)) 
-		if !model.IsValidServiceType(tenderServiceType) {
-			h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", "Invalid service type"))
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"reason": "Invalid service type",
-			})
-	}
-	
-	serviceTypes = append(serviceTypes, tenderServiceType)
+	limit := getTendersRequest.Limit
+	offset := getTendersRequest.Offset
+	serviceTypes := getTendersRequest.ServiceTypes
 
-}
+
 	var tenders []model.Tender
-	tenders, err = h.tenderService.GetTenders(ctx,limit,offset,serviceTypes)
+	tenders, err := h.tenderService.GetTenders(ctx,limit,offset,serviceTypes)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"reason": "Error getting tenders"})
 	}
 	return c.Status(fiber.StatusOK).JSON(tenders)
-
 }
