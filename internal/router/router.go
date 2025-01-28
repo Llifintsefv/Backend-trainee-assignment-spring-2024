@@ -2,6 +2,7 @@ package router
 
 import (
 	"Backend-trainee-assignment-autumn-2024/internal/delivery/handler"
+	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -11,11 +12,13 @@ func SetupRouter(tenderHandler *handler.TenderHandler,pingHandler *handler.PingH
 
 	app.Get("/api/ping", pingHandler.Ping)
 
-	app.Post("/tender/new",tenderHandler.CreateTender)
+	api := app.Group("/",middleware.AuthMiddleware) // Имитация авторизации
 
-	app.Get("/tenders",tenderHandler.GetTenders)
+	api.Post("/tender/new",tenderHandler.CreateTender)
 
-	app.Post("/bids/new",bidHandler.CreateBid)
+	api.Get("/tenders",tenderHandler.GetTenders)
+
+	api.Post("/bids/new",bidHandler.CreateBid)
 
 	return app
 }
