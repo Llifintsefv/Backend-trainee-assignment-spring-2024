@@ -34,7 +34,7 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 	_,err := s.tenderRepository.GetTenderById(ctx, bidRequest.TenderID)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender", slog.Any("error", err))
-		return nil, fmt.Errorf("Error getting tender")
+		return nil, fmt.Errorf("Error getting tender, %w", err)
 	}
 
 	var authorID string
@@ -45,20 +45,12 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 		_, err = s.organizationRepository.GetOrganizationById(ctx, bidRequest.OrganizationID)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "Error getting organization", slog.Any("error", err))
-			return nil, fmt.Errorf("Error getting organization")
+			return nil, fmt.Errorf("Error getting organization, %w", err)
 		}
 	} else {
 		authorID = bidRequest.CreatorUsername
 	}
 
-
-
-	_,err = s.userRepository.GetUserByUsername(ctx, bidRequest.CreatorUsername)
-	if err != nil {
-		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
-		return nil, fmt.Errorf("Error getting user")
-	}
-	
 	
 	bid := &model.Bid{}
 
@@ -78,7 +70,7 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 	bidResponse,err := s.BidRepository.CreateBid(ctx, bid)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error creating bid", slog.Any("error", err))
-		return nil, fmt.Errorf("Error creating bid")
+		return nil, fmt.Errorf("Error creating bid, %w", err)
 	}
 
 	return bidResponse, nil

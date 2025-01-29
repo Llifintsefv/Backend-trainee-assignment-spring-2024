@@ -10,6 +10,7 @@ type TenderRepository interface {
 	CreateTender(context.Context, *model.Tender) (*model.Tender,error)
 	GetTenders(context.Context, int,int, []model.TenderServiceType) ([]model.Tender, error)
 	GetTenderById(context.Context, string) (*model.Tender, error)
+	GetCurrentUserTenders(context.Context, int,int, string) ([]model.Tender, error)
 }
 
 type OrganizationRepository interface {
@@ -18,7 +19,7 @@ type OrganizationRepository interface {
 
 type UserRepository interface {
 	GetUserById(context.Context, string) (*model.User, error)
-	GetUserByUsername(context.Context, string) (*model.User, error)
+
 }
 
 

@@ -7,13 +7,17 @@ import (
 )
 
 
-type PingHandler struct {
+type pingHandler struct {
 	logger *slog.Logger
 }
 
-func NewPingHandler(logger *slog.Logger) *PingHandler {
-	return &PingHandler{logger: logger}
+type PingHandler interface {
+	Ping(c *fiber.Ctx) error
 }
-func (p *PingHandler)Ping(c *fiber.Ctx) error {
+
+func NewPingHandler(logger *slog.Logger) PingHandler {
+	return &pingHandler{logger: logger}
+}
+func (p *pingHandler)Ping(c *fiber.Ctx) error {
 	return c.SendString("ok")
 }

@@ -12,7 +12,10 @@ import (
 type TenderService interface {
 	CreateTender(context.Context, *model.CreateTenderRequest) (*model.Tender,error)
 	GetTenders(context.Context, int,int, []model.TenderServiceType) ([]model.Tender, error)
+	GetTenderById(context.Context, string) (*model.Tender, error)
+	GetCurrentUserTenders(context.Context, int,int, string) ([]model.Tender, error)
 }
+
 
 type tenderService struct {
 	TenderRepository repository.TenderRepository
@@ -49,6 +52,28 @@ func (s *tenderService) CreateTender(ctx context.Context, createTenderRequest *m
 func (s *tenderService) GetTenders(ctx context.Context, limit int, offset int, serviceTypes []model.TenderServiceType) ([]model.Tender, error) {
 
 	tenders, err := s.TenderRepository.GetTenders(ctx, limit, offset, serviceTypes)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
+		return nil, err
+	}
+
+	return tenders, nil
+}
+
+
+func (s *tenderService) GetTenderById(ctx context.Context, id string) (*model.Tender, error) {
+	tender, err := s.TenderRepository.GetTenderById(ctx, id)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting tender by id", slog.Any("error", err))
+		return nil, err
+	}
+	return tender, nil
+}
+
+
+func (s *tenderService) GetCurrentUserTenders(ctx context.Context, limit int, offset int, username string) ([]model.Tender, error) {
+
+	tenders, err := s.TenderRepository.GetCurrentUserTenders(ctx, limit, offset, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return nil, err

@@ -3,6 +3,7 @@ package main
 import (
 	"Backend-trainee-assignment-autumn-2024/internal/config"
 	"Backend-trainee-assignment-autumn-2024/internal/delivery/handler"
+	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils/middleware"
 	"Backend-trainee-assignment-autumn-2024/internal/repository/postgres"
 	"Backend-trainee-assignment-autumn-2024/internal/router"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
@@ -45,7 +46,7 @@ func main() {
 	pingHandler := handler.NewPingHandler(logger)
 
 	app := router.SetupRouter(tenderHandler,pingHandler,bidHandler)
-
+	app.Use(middleware.AuthMiddleware)
 
 
 
@@ -67,6 +68,7 @@ func main() {
 	defer shutdownCancel()
 
 	if err := app.ShutdownWithContext(ctx); err != nil { 
+		slog.Error("Server forced to shutdown: ", err)
 		log.Fatal("Server forced to shutdown: ", err)
 	}
 

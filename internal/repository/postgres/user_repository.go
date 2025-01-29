@@ -53,33 +53,3 @@ func (r *userRepository) GetUserById(ctx context.Context, id string) (*model.Use
 	return &user, nil
 }
 
-func (r *userRepository) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
-	stmt, err := r.db.PrepareContext(ctx, `
-		SELECT id, username, first_name, last_name, created_at, updated_at
-		FROM employee 
-		WHERE username = $1
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare statement for getting user by username: %w", err)
-	}
-	defer stmt.Close()
-
-	user := model.User{}
-	err = stmt.QueryRowContext(ctx, username).Scan(
-		&user.Id,
-		&user.Username,	
-		&user.First_name,
-		&user.Last_name,
-		&user.Created_at,
-		&user.Updated_at,
-	)
-	if err != nil {	
-		if err != sql.ErrNoRows {
-			r.logger.ErrorContext(ctx, "Error getting user by username", slog.Any("error", err))
-			return nil, fmt.Errorf("failed to execute query for getting user by username: %w", err)
-		}
-		return nil, nil
-	}
-
-	return &user, nil
-}

@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func SetupRouter(tenderHandler *handler.TenderHandler,pingHandler *handler.PingHandler,bidHandler *handler.BidHandler) *fiber.App {
+func SetupRouter(tenderHandler handler.TenderHandler,pingHandler handler.PingHandler,bidHandler handler.BidHandler) *fiber.App {
 	app := fiber.New()
 
 	app.Get("/api/ping", pingHandler.Ping)
@@ -15,6 +15,7 @@ func SetupRouter(tenderHandler *handler.TenderHandler,pingHandler *handler.PingH
 	api := app.Group("/",middleware.AuthMiddleware) // Имитация авторизации
 
 	api.Post("/tender/new",tenderHandler.CreateTender)
+	api.Get("/tender/my",tenderHandler.GetCurrentUserTenders)
 
 	api.Get("/tenders",tenderHandler.GetTenders)
 

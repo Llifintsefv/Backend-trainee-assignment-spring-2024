@@ -42,6 +42,6 @@ type Bid struct {
 	AuthorID      string        `json:"authorId"`
 	CreatorUsername string        `json:"creatorUsername"`
 	Version       int           `json:"version"`
-	CreatedAt     time.Time     `json:"createdAt"`
-	UpdatedAt     time.Time     `json:"updatedAt"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
