@@ -14,8 +14,9 @@ func SetupRouter(tenderHandler handler.TenderHandler,pingHandler handler.PingHan
 
 	api := app.Group("/",middleware.AuthMiddleware) // Имитация авторизации
 
-	api.Post("/tender/new",tenderHandler.CreateTender)
-	api.Get("/tender/my",tenderHandler.GetCurrentUserTenders)
+	api.Post("/tenders/new",tenderHandler.CreateTender)
+	api.Get("/tenders/my",tenderHandler.GetCurrentUserTenders)
+	api.Get("/tenders/:tenderId/status",tenderHandler.GetTenderStatus)
 
 	api.Get("/tenders",tenderHandler.GetTenders)
 

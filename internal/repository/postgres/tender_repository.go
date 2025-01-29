@@ -157,7 +157,7 @@ func (r *tenderRepository) GetTenderById(ctx context.Context, id string) (*model
 			r.logger.ErrorContext(ctx, "Error getting tender by id", slog.Any("error", err))
 			return nil, fmt.Errorf("failed to execute query for getting tender by id: %w", err)
 		}
-		return nil, nil	
+		return nil, err	
 	}
 
 	return &tender, nil

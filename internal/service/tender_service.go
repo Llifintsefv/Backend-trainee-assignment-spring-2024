@@ -14,6 +14,7 @@ type TenderService interface {
 	GetTenders(context.Context, int,int, []model.TenderServiceType) ([]model.Tender, error)
 	GetTenderById(context.Context, string) (*model.Tender, error)
 	GetCurrentUserTenders(context.Context, int,int, string) ([]model.Tender, error)
+	GetTenderStatus(context.Context, string) (string, error)
 }
 
 
@@ -81,3 +82,14 @@ func (s *tenderService) GetCurrentUserTenders(ctx context.Context, limit int, of
 
 	return tenders, nil
 }
+
+
+func (s *tenderService) GetTenderStatus(ctx context.Context, id string) (string, error) {
+
+	tender, err := s.TenderRepository.GetTenderById(ctx, id)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting tender status", slog.Any("error", err))
+		return "", err
+	}
+	return string(tender.Status), nil
+	}
