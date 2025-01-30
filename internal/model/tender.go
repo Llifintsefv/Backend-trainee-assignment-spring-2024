@@ -7,7 +7,7 @@ type TenderStatus string
 
 const (
 	TenderStatusCreated   TenderStatus = "Created"   
-	TenderStatusPublished TenderStatus = "Publish" 
+	TenderStatusPublished TenderStatus = "Published" 
 	TenderStatusClosed    TenderStatus = "Closed"    
 )
 

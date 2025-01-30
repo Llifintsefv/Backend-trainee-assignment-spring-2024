@@ -17,6 +17,7 @@ func SetupRouter(tenderHandler handler.TenderHandler,pingHandler handler.PingHan
 	api.Post("/tenders/new",tenderHandler.CreateTender)
 	api.Get("/tenders/my",tenderHandler.GetCurrentUserTenders)
 	api.Get("/tenders/:tenderId/status",tenderHandler.GetTenderStatus)
+	api.Put("/tenders/:tenderId/status",tenderHandler.UpdateTenderStatus)
 
 	api.Get("/tenders",tenderHandler.GetTenders)
 

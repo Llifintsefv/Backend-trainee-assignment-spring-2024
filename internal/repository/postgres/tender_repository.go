@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/lib/pq"
 )
@@ -209,3 +210,86 @@ func (r *tenderRepository) GetCurrentUserTenders(ctx context.Context, limit int,
 
 	return tenders, nil
 }
+
+
+func (r *tenderRepository) IsUserResponsibleForTender(ctx context.Context, tenderID string, username string) (bool, error) {
+	stmt, err := r.db.PrepareContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM organization_responsible orr
+			JOIN tender t ON t.organization_id = orr.organization_id
+			JOIN employee e ON e.id = orr.user_id
+			WHERE t.id = $1 AND e.username = $2
+		)
+	`)
+	if err != nil {
+		return false, fmt.Errorf("error preparing statement for checking user is responsible: %w", err)
+	}
+
+	defer stmt.Close()
+
+	
+
+	var exists bool
+
+	err = stmt.QueryRowContext(ctx, tenderID, username).Scan(&exists)
+
+	if err != nil && err != sql.ErrNoRows {
+		return false, fmt.Errorf("error checking user is responsible: %w", err)
+	}
+
+	return exists, nil
+}
+
+func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tender) (*model.Tender, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, `
+		UPDATE tender
+		SET name = $2, description = $3, service_type = $4, organization_id = $5, creator_username = $6, status = $7, version = $8, updated_at = $9
+		WHERE id = $1
+		RETURNING id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement for updating tender: %w", err)
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRowContext(ctx,
+		tender.ID,
+		tender.Name,
+		tender.Description,
+		tender.ServiceType,
+		tender.OrganizationID,
+		tender.CreatorUsername,
+		tender.Status,
+		tender.Version,
+		time.Now(),
+	)
+
+	var updatedTender model.Tender
+	if err := row.Scan(
+		&updatedTender.ID,
+		&updatedTender.Name,
+		&updatedTender.Description,
+		&updatedTender.ServiceType,
+		&updatedTender.OrganizationID,
+		&updatedTender.CreatorUsername,
+		&updatedTender.Status,
+		&updatedTender.Version,
+		&updatedTender.CreatedAt,
+		&updatedTender.UpdatedAt,
+	); err != nil {
+		return nil, fmt.Errorf("failed to scan updated tender: %w", err)
+	}	
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return &updatedTender, nil
+	}

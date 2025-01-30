@@ -20,6 +20,7 @@ type TenderHandler interface {
 	GetTenders(c *fiber.Ctx) error
 	GetCurrentUserTenders(c *fiber.Ctx) error
 	GetTenderStatus(c *fiber.Ctx) error
+	UpdateTenderStatus(c *fiber.Ctx) error
 }
 
 func NewTenderHandler(tenderService service.TenderService, logger *slog.Logger) TenderHandler {
@@ -126,3 +127,19 @@ func (h *tenderHandler) GetTenderStatus(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusOK).JSON(status)
 }
+
+func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
+	ctx := c.Context()
+	id := c.Params("tenderId")
+	user := c.Queries()["username"]
+	TargetStatus := c.Queries()["status"]
+
+	tender,err := h.tenderService.UpdateTenderStatus(ctx,id,user,TargetStatus)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error updating tender status", slog.Any("error", err))
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating tender status"})
+	}
+	return c.Status(fiber.StatusOK).JSON(tender)
+
+}
+
