@@ -47,3 +47,10 @@ type GetTendersRequest struct {
 	Offset       int               `query:"offset" validate:"min=0"`
 	ServiceTypes []TenderServiceType `query:"service_type" validate:"dive,servicetype"`
 }
+
+type UpdateData struct {
+    Name        *string `json:"name"`
+    Description *string `json:"description"`
+    ServiceType *string `json:"serviceType"`
+}
+   

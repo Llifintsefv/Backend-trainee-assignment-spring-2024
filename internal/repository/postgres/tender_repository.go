@@ -241,13 +241,15 @@ func (r *tenderRepository) IsUserResponsibleForTender(ctx context.Context, tende
 	return exists, nil
 }
 
+
+
 func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tender) (*model.Tender, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
-
+	
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE tender
 		SET name = $2, description = $3, service_type = $4, organization_id = $5, creator_username = $6, status = $7, version = $8, updated_at = $9
@@ -267,7 +269,7 @@ func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tende
 		tender.OrganizationID,
 		tender.CreatorUsername,
 		tender.Status,
-		tender.Version,
+		tender.Version+1,
 		time.Now(),
 	)
 

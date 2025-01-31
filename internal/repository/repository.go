@@ -17,6 +17,7 @@ type TenderRepository interface {
 
 type OrganizationRepository interface {
 	GetOrganizationById(context.Context, string) (*model.Organization, error)
+	IsUserResponsibleForOrganization(context.Context, string, string) (bool, error)
 }
 
 type UserRepository interface {

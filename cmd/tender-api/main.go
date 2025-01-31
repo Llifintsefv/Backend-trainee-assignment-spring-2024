@@ -36,7 +36,7 @@ func main() {
 	tenderRepository := postgres.NewTenderRepository(db,logger)
 
 	
-	tenderService := service.NewTenderService(tenderRepository,logger)
+	tenderService := service.NewTenderService(tenderRepository,organizationRepository,logger)
 	bidService := service.NewBidService(bidRepository,tenderRepository,organizationRepository,userRepository,logger)
 	
 	tenderHandler := handler.NewTenderHandler(tenderService,logger)

@@ -16,22 +16,34 @@ type TenderService interface {
 	GetCurrentUserTenders(context.Context, int,int, string) ([]model.Tender, error)
 	GetTenderStatus(context.Context, string) (string, error)
 	UpdateTenderStatus(context.Context, string, string, string) (*model.Tender, error)
+	EditTender(context.Context, string, string, model.UpdateData) (*model.Tender, error)
 }
 
 
 type tenderService struct {
 	TenderRepository repository.TenderRepository
+	OrganizationRepository repository.OrganizationRepository
 	logger *slog.Logger
 }
 
-func NewTenderService(tenderRepository repository.TenderRepository, logger *slog.Logger) TenderService {
-	return &tenderService{tenderRepository, logger}
+func NewTenderService(tenderRepository repository.TenderRepository, OrganizationRepository repository.OrganizationRepository, logger *slog.Logger) TenderService {
+	return &tenderService{tenderRepository, OrganizationRepository, logger}
 }
 
 func (s *tenderService) CreateTender(ctx context.Context, createTenderRequest *model.CreateTenderRequest) (*model.Tender, error) {
+
+	isResponsible, err := s.OrganizationRepository.IsUserResponsibleForOrganization(ctx, createTenderRequest.OrganizationID, createTenderRequest.CreatorUsername)
+    if err != nil {
+		s.logger.ErrorContext(ctx, "Error checking user is responsible for tender", slog.Any("error", err))
+		return nil, err
+    }
+
+	 if !isResponsible {
+        s.logger.ErrorContext(ctx, "User is not responsible for the tender", slog.Any("error", err))
+		return nil, err
+    }
+
 	tender := &model.Tender{}
-
-
 
 	tender.ID = uuid.NewString()
 	tender.Name = createTenderRequest.Name
@@ -42,7 +54,7 @@ func (s *tenderService) CreateTender(ctx context.Context, createTenderRequest *m
 	tender.Version = 1
 	tender.Status = model.TenderStatusCreated
 
-	tender, err := s.TenderRepository.CreateTender(ctx, tender)
+	tender, err = s.TenderRepository.CreateTender(ctx, tender)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error creating tender", slog.Any("error", err))
 		return nil, err
@@ -97,6 +109,18 @@ func (s *tenderService) GetTenderStatus(ctx context.Context, id string) (string,
 
 func (s *tenderService) UpdateTenderStatus(ctx context.Context, id string, username string, status string) (*model.Tender, error) {
 
+	isResponsible, err := s.TenderRepository.IsUserResponsibleForTender(ctx, id, username)
+    if err != nil {
+		s.logger.ErrorContext(ctx, "Error checking user is responsible for tender", slog.Any("error", err))
+		return nil, err
+    }
+
+	 if !isResponsible {
+        s.logger.ErrorContext(ctx, "User is not responsible for the tender", slog.Any("error", err))
+		return nil, err
+    }
+
+   
 	tender, err := s.TenderRepository.GetTenderById(ctx, id)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender status", slog.Any("error", err))
@@ -113,6 +137,40 @@ func (s *tenderService) UpdateTenderStatus(ctx context.Context, id string, usern
 	tender, err = s.TenderRepository.UpdateTender(ctx, tender)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error updating tender status", slog.Any("error", err))
+		return nil, err
+	}
+
+	return tender, nil
+}
+
+
+func (s *tenderService) EditTender(ctx context.Context, id string, username string, updateData model.UpdateData) (*model.Tender, error) {
+
+	tender, err := s.TenderRepository.GetTenderById(ctx, id)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting tender", slog.Any("error", err))
+		return nil, err
+	}
+
+	if tender.CreatorUsername != username {
+		s.logger.ErrorContext(ctx, "User is not the creator of the tender", slog.Any("error", err))
+		return nil, err
+	}
+	if *updateData.Name != "" {
+		tender.Name = *updateData.Name	
+	}
+
+	if *updateData.Description != "" {
+		tender.Description = *updateData.Description
+	}
+	
+	if *updateData.ServiceType != "" {
+		tender.ServiceType = model.TenderServiceType(*updateData.ServiceType)
+	}
+
+	tender, err = s.TenderRepository.UpdateTender(ctx, tender)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error updating tender", slog.Any("error", err))
 		return nil, err
 	}
 

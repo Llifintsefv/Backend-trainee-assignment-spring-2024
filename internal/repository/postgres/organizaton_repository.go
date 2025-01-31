@@ -49,3 +49,29 @@ func (r *organizationRepository) GetOrganizationById(ctx context.Context, id str
 
 	return &organization, nil
 }
+
+func (r *organizationRepository) IsUserResponsibleForOrganization(ctx context.Context, organizationID string, username string) (bool, error) {
+	stmt, err := r.db.PrepareContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM organization_responsible orr
+			JOIN employee e ON e.id = orr.user_id
+			WHERE orr.organization_id = $1 AND e.username = $2
+		)
+	`)
+	if err != nil {
+		return false, fmt.Errorf("error preparing statement for checking user is responsible: %w", err)
+	}
+
+	defer stmt.Close()
+
+	var exists bool
+
+	err = stmt.QueryRowContext(ctx, organizationID, username).Scan(&exists)
+
+	if err != nil && err != sql.ErrNoRows {
+		return false, fmt.Errorf("error checking user is responsible: %w", err)
+	}
+
+	return exists, nil
+}

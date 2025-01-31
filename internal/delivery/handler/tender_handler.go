@@ -21,6 +21,7 @@ type TenderHandler interface {
 	GetCurrentUserTenders(c *fiber.Ctx) error
 	GetTenderStatus(c *fiber.Ctx) error
 	UpdateTenderStatus(c *fiber.Ctx) error
+	EditTender(c *fiber.Ctx) error
 }
 
 func NewTenderHandler(tenderService service.TenderService, logger *slog.Logger) TenderHandler {
@@ -143,3 +144,25 @@ func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
 
 }
 
+
+
+func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
+   ctx := c.Context()
+
+    tenderID := c.Params("tenderId")
+    username := c.Query("username")
+
+	updateData := model.UpdateData{}
+
+    if err := c.BodyParser(&updateData); err != nil {
+		h.logger.Error("Error parsing request body", "error", err)
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid request body"})
+	}
+        
+    updatedTender, err := h.tenderService.EditTender(ctx, tenderID, username, updateData)
+    if err != nil {
+		h.logger.Error("Error updating tender", "error", err)	
+   }
+
+  return c.Status(fiber.StatusOK).JSON(updatedTender)
+}
