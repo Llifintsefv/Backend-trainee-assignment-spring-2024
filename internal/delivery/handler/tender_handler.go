@@ -5,7 +5,6 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
 	"log/slog"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -91,24 +90,14 @@ func (h *tenderHandler) GetTenders(c *fiber.Ctx) error {
 func (h *tenderHandler) GetCurrentUserTenders(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	limitStr := c.Queries()["limit"]
-	offsetStr := c.Queries()["offset"]
+	limit := c.QueryInt("limit", 5)
+	offset := c.QueryInt("offset", 0)
 	user := c.Queries()["username"]
 
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		h.logger.ErrorContext(ctx, "Error parsing limit", slog.Any("error", err))
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid limit"})
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		h.logger.ErrorContext(ctx, "Error parsing offset", slog.Any("error", err))
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid offset"})
-	}
+	
 
 	var tenders []model.Tender
-	tenders, err = h.tenderService.GetCurrentUserTenders(ctx,limit,offset,user)
+	tenders, err := h.tenderService.GetCurrentUserTenders(ctx,limit,offset,user)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tenders"})
@@ -134,6 +123,9 @@ func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
 	id := c.Params("tenderId")
 	user := c.Queries()["username"]
 	TargetStatus := c.Queries()["status"]
+
+
+	
 
 	tender,err := h.tenderService.UpdateTenderStatus(ctx,id,user,TargetStatus)
 	if err != nil {

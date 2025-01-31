@@ -31,7 +31,14 @@ func (r *tenderRepository) CreateTender(ctx context.Context, tender *model.Tende
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback() 
+	defer func() {
+    if err := tx.Rollback(); err != nil {
+       
+        if err != sql.ErrTxDone && err != sql.ErrConnDone { 
+            r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+        }
+    }
+	}()
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO tender (id, name, description, service_type, organization_id, creator_username, status, version)
@@ -248,7 +255,14 @@ func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tende
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+    if err := tx.Rollback(); err != nil {
+       
+        if err != sql.ErrTxDone && err != sql.ErrConnDone { 
+            r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+        }
+    }
+	}()
 	
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE tender

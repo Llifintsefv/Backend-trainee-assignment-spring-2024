@@ -25,7 +25,7 @@ func main() {
 	cfg := config.NewConfig()
 	db, err := postgres.NewDB(cfg.DBConnStr)
 	if err != nil {
-		slog.Error("failed to connect to database", err)
+		slog.Error("failed to connect to database", "error", err)
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 	defer db.Close()
@@ -68,7 +68,7 @@ func main() {
 	defer shutdownCancel()
 
 	if err := app.ShutdownWithContext(ctx); err != nil { 
-		slog.Error("Server forced to shutdown: ", err)
+		slog.Error("Server forced to shutdown: ", "error", err)
 		log.Fatal("Server forced to shutdown: ", err)
 	}
 

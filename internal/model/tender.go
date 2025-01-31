@@ -38,7 +38,7 @@ type CreateTenderRequest struct {
 	Name         string            `json:"name" validate:"required,max=100"` 
 	Description  string            `json:"description" validate:"required,max=1000"` 
 	ServiceType  TenderServiceType `json:"serviceType" validate:"required,servicetype"` 
-	OrganizationID string            `json:"organizationId" " validate:"required"`
+	OrganizationID string `json:"organizationId" validate:"required,uuid"`
 	CreatorUsername string            `json:"creatorUsername" validate:"required"`
 }
 

@@ -48,6 +48,11 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 			return nil, fmt.Errorf("Error getting organization, %w", err)
 		}
 	} else {
+		_,err := s.userRepository.GetUserById(ctx, bidRequest.CreatorUsername)
+		if err != nil {
+			s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+			return nil, fmt.Errorf("Error getting user, %w", err)
+		}
 		authorID = bidRequest.CreatorUsername
 	}
 

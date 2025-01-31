@@ -22,6 +22,7 @@ type OrganizationRepository interface {
 
 type UserRepository interface {
 	GetUserById(context.Context, string) (*model.User, error)
+	GetUserByUsername(context.Context, string) (*model.User, error)
 
 }
 
