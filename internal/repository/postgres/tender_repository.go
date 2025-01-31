@@ -33,7 +33,6 @@ func (r *tenderRepository) CreateTender(ctx context.Context, tender *model.Tende
 	}
 	defer func() {
     if err := tx.Rollback(); err != nil {
-       
         if err != sql.ErrTxDone && err != sql.ErrConnDone { 
             r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
         }
@@ -173,7 +172,7 @@ func (r *tenderRepository) GetTenderById(ctx context.Context, id string) (*model
 
 
 
-func (r *tenderRepository) GetCurrentUserTenders(ctx context.Context, limit int, offset int, username string) ([]model.Tender, error) {
+func (r *tenderRepository) GetTenderByUsername(ctx context.Context, limit int, offset int, username string) ([]model.Tender, error) {
 
 	stmt, err := r.db.PrepareContext(ctx, `
 		SELECT id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at

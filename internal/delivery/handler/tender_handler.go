@@ -11,7 +11,7 @@ import (
 
 type tenderHandler struct {
 	tenderService service.TenderService
-	logger *slog.Logger	
+	logger        *slog.Logger
 }
 
 type TenderHandler interface {
@@ -27,8 +27,6 @@ func NewTenderHandler(tenderService service.TenderService, logger *slog.Logger) 
 	return &tenderHandler{tenderService: tenderService, logger: logger}
 }
 
-
-
 func (h *tenderHandler) CreateTender(c *fiber.Ctx) error {
 	createTenderRequest := new(model.CreateTenderRequest)
 	ctx := c.Context()
@@ -37,13 +35,11 @@ func (h *tenderHandler) CreateTender(c *fiber.Ctx) error {
 		h.logger.ErrorContext(ctx, "Error parsing request body", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid request body"})
 	}
-	
+
 	if err := utils.ValidateStruct(createTenderRequest); err != nil {
 		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason:err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
 	}
-
-	
 
 	tender, err := h.tenderService.CreateTender(ctx, createTenderRequest)
 	if err != nil {
@@ -51,7 +47,7 @@ func (h *tenderHandler) CreateTender(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error creating tender"})
 	}
 	return c.Status(fiber.StatusCreated).JSON(tender)
-	
+
 }
 
 func (h *tenderHandler) GetTenders(c *fiber.Ctx) error {
@@ -64,28 +60,23 @@ func (h *tenderHandler) GetTenders(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
 	}
 
-
 	if err := utils.ValidateStruct(getTendersRequest); err != nil {
 		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
 	}
 
-
-
 	limit := getTendersRequest.Limit
 	offset := getTendersRequest.Offset
 	serviceTypes := getTendersRequest.ServiceTypes
 
-
 	var tenders []model.Tender
-	tenders, err := h.tenderService.GetTenders(ctx,limit,offset,serviceTypes)
+	tenders, err := h.tenderService.GetTenders(ctx, limit, offset, serviceTypes)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tenders"})
 	}
 	return c.Status(fiber.StatusOK).JSON(tenders)
 }
-
 
 func (h *tenderHandler) GetCurrentUserTenders(c *fiber.Ctx) error {
 	ctx := c.Context()
@@ -94,10 +85,8 @@ func (h *tenderHandler) GetCurrentUserTenders(c *fiber.Ctx) error {
 	offset := c.QueryInt("offset", 0)
 	user := c.Queries()["username"]
 
-	
-
 	var tenders []model.Tender
-	tenders, err := h.tenderService.GetCurrentUserTenders(ctx,limit,offset,user)
+	tenders, err := h.tenderService.GetCurrentUserTenders(ctx, limit, offset, user)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tenders"})
@@ -106,11 +95,10 @@ func (h *tenderHandler) GetCurrentUserTenders(c *fiber.Ctx) error {
 
 }
 
-
 func (h *tenderHandler) GetTenderStatus(c *fiber.Ctx) error {
 	ctx := c.Context()
 	id := c.Params("tenderId")
-	status, err := h.tenderService.GetTenderStatus(ctx,id)
+	status, err := h.tenderService.GetTenderStatus(ctx, id)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tender status", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tender status"})
@@ -124,10 +112,17 @@ func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
 	user := c.Queries()["username"]
 	TargetStatus := c.Queries()["status"]
 
+	validStatuses := map[string]bool{
+		"Created":   true,
+		"Published": true,
+		"Closed":    true,
+	}
+	if !validStatuses[TargetStatus] {
+		h.logger.ErrorContext(ctx, "Invalid tender status", slog.String("status", TargetStatus))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid tender status. Allowed values are: Created, Published, Closed"})
+	}
 
-	
-
-	tender,err := h.tenderService.UpdateTenderStatus(ctx,id,user,TargetStatus)
+	tender, err := h.tenderService.UpdateTenderStatus(ctx, id, user, TargetStatus)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error updating tender status", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating tender status"})
@@ -136,25 +131,28 @@ func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
 
 }
 
-
-
 func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
-   ctx := c.Context()
+	ctx := c.Context()
 
-    tenderID := c.Params("tenderId")
-    username := c.Query("username")
+	tenderID := c.Params("tenderId")
+	username := c.Query("username")
 
 	updateData := model.UpdateData{}
 
-    if err := c.BodyParser(&updateData); err != nil {
+	if err := c.BodyParser(&updateData); err != nil {
 		h.logger.Error("Error parsing request body", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid request body"})
 	}
-        
-    updatedTender, err := h.tenderService.EditTender(ctx, tenderID, username, updateData)
-    if err != nil {
-		h.logger.Error("Error updating tender", "error", err)	
-   }
 
-  return c.Status(fiber.StatusOK).JSON(updatedTender)
+	if err := utils.ValidateStruct(updateData); err != nil {
+		h.logger.Error("Validation error", "error", err)
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	updatedTender, err := h.tenderService.EditTender(ctx, tenderID, username, updateData)
+	if err != nil {
+		h.logger.Error("Error updating tender", "error", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(updatedTender)
 }

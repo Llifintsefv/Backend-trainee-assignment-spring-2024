@@ -5,12 +5,11 @@ import (
 	"context"
 )
 
-
 type TenderRepository interface {
-	CreateTender(context.Context, *model.Tender) (*model.Tender,error)
-	GetTenders(context.Context, int,int, []model.TenderServiceType) ([]model.Tender, error)
+	CreateTender(context.Context, *model.Tender) (*model.Tender, error)
+	GetTenders(context.Context, int, int, []model.TenderServiceType) ([]model.Tender, error)
 	GetTenderById(context.Context, string) (*model.Tender, error)
-	GetCurrentUserTenders(context.Context, int,int, string) ([]model.Tender, error)
+	GetTenderByUsername(context.Context, int, int, string) ([]model.Tender, error)
 	UpdateTender(context.Context, *model.Tender) (*model.Tender, error)
 	IsUserResponsibleForTender(context.Context, string, string) (bool, error)
 }
@@ -23,11 +22,9 @@ type OrganizationRepository interface {
 type UserRepository interface {
 	GetUserById(context.Context, string) (*model.User, error)
 	GetUserByUsername(context.Context, string) (*model.User, error)
-
 }
-
-
 
 type BidRepository interface {
 	CreateBid(context.Context, *model.Bid) (*model.Bid, error)
+	GetBidByUsername(context.Context, int, int, string) ([]model.Bid, error)
 }

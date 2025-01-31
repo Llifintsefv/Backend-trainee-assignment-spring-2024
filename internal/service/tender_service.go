@@ -87,7 +87,7 @@ func (s *tenderService) GetTenderById(ctx context.Context, id string) (*model.Te
 
 func (s *tenderService) GetCurrentUserTenders(ctx context.Context, limit int, offset int, username string) ([]model.Tender, error) {
 
-	tenders, err := s.TenderRepository.GetCurrentUserTenders(ctx, limit, offset, username)
+	tenders, err := s.TenderRepository.GetTenderByUsername(ctx, limit, offset, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return nil, err
@@ -151,7 +151,7 @@ func (s *tenderService) EditTender(ctx context.Context, id string, username stri
 		s.logger.ErrorContext(ctx, "Error getting tender", slog.Any("error", err))
 		return nil, err
 	}
-
+	
 	if tender.CreatorUsername != username {
 		s.logger.ErrorContext(ctx, "User is not the creator of the tender", slog.Any("error", err))
 		return nil, err

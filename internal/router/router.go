@@ -23,6 +23,7 @@ func SetupRouter(tenderHandler handler.TenderHandler,pingHandler handler.PingHan
 	api.Get("/tenders",tenderHandler.GetTenders)
 
 	api.Post("/bids/new",bidHandler.CreateBid)
+	api.Get("/bids/my",bidHandler.GetCurrentUserBids)
 
 	return app
 }

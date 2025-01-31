@@ -22,11 +22,13 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	slog.SetDefault(logger)
 
-	cfg := config.NewConfig()
+	cfg,err  := config.NewConfig()
+	if err != nil {
+		slog.Error("failed to load config", "error", err)
+	}
 	db, err := postgres.NewDB(cfg.DBConnStr)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
-		log.Fatalf("failed to connect to database: %v", err)
 	}
 	defer db.Close()
 

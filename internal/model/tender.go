@@ -49,8 +49,7 @@ type GetTendersRequest struct {
 }
 
 type UpdateData struct {
-    Name        *string `json:"name"`
-    Description *string `json:"description"`
-    ServiceType *string `json:"serviceType"`
+    Name        *string `json:"name" validate:"omitempty,max=100"`
+    Description *string `json:"description" validate:"omitempty,max=1000"`
+    ServiceType *string `json:"serviceType" validate:"omitempty,servicetype"`
 }
-   
