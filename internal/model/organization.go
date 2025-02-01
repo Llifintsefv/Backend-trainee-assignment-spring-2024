@@ -11,7 +11,7 @@ const (
 )
 
 type Organization struct {
-	Id          string `json:"id" validate:"required,uuid"`
+	Id          string `json:"id" validate:"required"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Type        OrganizationType `json:"type" `

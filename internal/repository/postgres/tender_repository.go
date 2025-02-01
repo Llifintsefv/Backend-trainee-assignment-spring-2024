@@ -13,18 +13,16 @@ import (
 )
 
 type tenderRepository struct {
-	db *sql.DB
+	db     *sql.DB
 	logger *slog.Logger
 }
 
-
 func NewTenderRepository(db *sql.DB, logger *slog.Logger) repository.TenderRepository {
 	return &tenderRepository{
-		db: db,
+		db:     db,
 		logger: logger,
 	}
 }
-
 
 func (r *tenderRepository) CreateTender(ctx context.Context, tender *model.Tender) (*model.Tender, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -32,11 +30,11 @@ func (r *tenderRepository) CreateTender(ctx context.Context, tender *model.Tende
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
-    if err := tx.Rollback(); err != nil {
-        if err != sql.ErrTxDone && err != sql.ErrConnDone { 
-            r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
-        }
-    }
+		if err := tx.Rollback(); err != nil {
+			if err != sql.ErrTxDone && err != sql.ErrConnDone {
+				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+			}
+		}
 	}()
 
 	stmt, err := tx.PrepareContext(ctx, `
@@ -101,12 +99,12 @@ func (r *tenderRepository) GetTenders(ctx context.Context, limit int, offset int
 		serviceTypeStrings[i] = string(st)
 	}
 
-	rows, err := stmt.QueryContext(ctx, pq.Array(serviceTypeStrings), limit, offset) 
+	rows, err := stmt.QueryContext(ctx, pq.Array(serviceTypeStrings), limit, offset)
 	if err != nil {
 		r.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return nil, fmt.Errorf("failed to execute query for getting tenders: %w", err)
 	}
-	
+
 	defer rows.Close()
 
 	var tenders []model.Tender
@@ -133,7 +131,6 @@ func (r *tenderRepository) GetTenders(ctx context.Context, limit int, offset int
 	return tenders, nil
 }
 
-
 func (r *tenderRepository) GetTenderById(ctx context.Context, id string) (*model.Tender, error) {
 
 	stmt, err := r.db.PrepareContext(ctx, `
@@ -154,7 +151,7 @@ func (r *tenderRepository) GetTenderById(ctx context.Context, id string) (*model
 		&tender.ServiceType,
 		&tender.OrganizationID,
 		&tender.CreatorUsername,
-		&tender.Status,	
+		&tender.Status,
 		&tender.Version,
 		&tender.CreatedAt,
 		&tender.UpdatedAt,
@@ -164,13 +161,11 @@ func (r *tenderRepository) GetTenderById(ctx context.Context, id string) (*model
 			r.logger.ErrorContext(ctx, "Error getting tender by id", slog.Any("error", err))
 			return nil, fmt.Errorf("failed to execute query for getting tender by id: %w", err)
 		}
-		return nil, err	
+		return nil, err
 	}
 
 	return &tender, nil
 }
-
-
 
 func (r *tenderRepository) GetTenderByUsername(ctx context.Context, limit int, offset int, username string) ([]model.Tender, error) {
 
@@ -185,12 +180,12 @@ func (r *tenderRepository) GetTenderByUsername(ctx context.Context, limit int, o
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, username, limit, offset) 
+	rows, err := stmt.QueryContext(ctx, username, limit, offset)
 	if err != nil {
 		r.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return nil, fmt.Errorf("failed to execute query for getting tenders: %w", err)
 	}
-	
+
 	defer rows.Close()
 
 	var tenders []model.Tender
@@ -201,7 +196,7 @@ func (r *tenderRepository) GetTenderByUsername(ctx context.Context, limit int, o
 			&tender.Name,
 			&tender.Description,
 			&tender.ServiceType,
-			&tender.OrganizationID,			
+			&tender.OrganizationID,
 			&tender.CreatorUsername,
 			&tender.Status,
 			&tender.Version,
@@ -216,7 +211,6 @@ func (r *tenderRepository) GetTenderByUsername(ctx context.Context, limit int, o
 
 	return tenders, nil
 }
-
 
 func (r *tenderRepository) IsUserResponsibleForTender(ctx context.Context, tenderID string, username string) (bool, error) {
 	stmt, err := r.db.PrepareContext(ctx, `
@@ -234,8 +228,6 @@ func (r *tenderRepository) IsUserResponsibleForTender(ctx context.Context, tende
 
 	defer stmt.Close()
 
-	
-
 	var exists bool
 
 	err = stmt.QueryRowContext(ctx, tenderID, username).Scan(&exists)
@@ -247,22 +239,20 @@ func (r *tenderRepository) IsUserResponsibleForTender(ctx context.Context, tende
 	return exists, nil
 }
 
-
-
 func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tender) (*model.Tender, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
-    if err := tx.Rollback(); err != nil {
-       
-        if err != sql.ErrTxDone && err != sql.ErrConnDone { 
-            r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
-        }
-    }
+		if err := tx.Rollback(); err != nil {
+
+			if err != sql.ErrTxDone && err != sql.ErrConnDone {
+				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+			}
+		}
 	}()
-	
+
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE tender
 		SET name = $2, description = $3, service_type = $4, organization_id = $5, creator_username = $6, status = $7, version = $8, updated_at = $9
@@ -300,11 +290,11 @@ func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tende
 		&updatedTender.UpdatedAt,
 	); err != nil {
 		return nil, fmt.Errorf("failed to scan updated tender: %w", err)
-	}	
+	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return &updatedTender, nil
-	}
+}
