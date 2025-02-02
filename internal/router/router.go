@@ -7,23 +7,23 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func SetupRouter(tenderHandler handler.TenderHandler,pingHandler handler.PingHandler,bidHandler handler.BidHandler) *fiber.App {
+func SetupRouter(tenderHandler handler.TenderHandler, pingHandler handler.PingHandler, bidHandler handler.BidHandler) *fiber.App {
 	app := fiber.New()
 
 	app.Get("/api/ping", pingHandler.Ping)
 
-	api := app.Group("/",middleware.AuthMiddleware) // Имитация авторизации
+	api := app.Group("/", middleware.AuthMiddleware) // Имитация авторизации
 
-	api.Post("/tenders/new",tenderHandler.CreateTender)
-	api.Get("/tenders/my",tenderHandler.GetCurrentUserTenders)
-	api.Get("/tenders/:tenderId/status",tenderHandler.GetTenderStatus)
-	api.Put("/tenders/:tenderId/status",tenderHandler.UpdateTenderStatus)
-	api.Patch("/tenders/:tenderId",tenderHandler.EditTender)
+	api.Post("/tenders/new", tenderHandler.CreateTender)
+	api.Get("/tenders/my", tenderHandler.GetCurrentUserTenders)
+	api.Get("/tenders/:tenderId/status", tenderHandler.GetTenderStatus)
+	api.Put("/tenders/:tenderId/status", tenderHandler.UpdateTenderStatus)
+	api.Patch("/tenders/:tenderId", tenderHandler.EditTender)
+	api.Get("/tenders", tenderHandler.GetTenders)
+	api.Put("/tenders/:tenderId/rollback/:version", tenderHandler.RollbackTender)
 
-	api.Get("/tenders",tenderHandler.GetTenders)
-
-	api.Post("/bids/new",bidHandler.CreateBid)
-	api.Get("/bids/my",bidHandler.GetCurrentUserBids)
+	api.Post("/bids/new", bidHandler.CreateBid)
+	api.Get("/bids/my", bidHandler.GetCurrentUserBids)
 
 	return app
 }

@@ -55,3 +55,39 @@ CREATE TABLE bid (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE tender_history (
+    id VARCHAR PRIMARY KEY,
+    tender_id VARCHAR NOT NULL, 
+    name VARCHAR(100),
+    description TEXT,
+    service_type VARCHAR,
+    status VARCHAR,
+    organization_id VARCHAR,
+    creator_username VARCHAR(50),
+    version INTEGER,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+);
+
+CREATE INDEX idx_tender_history_tender_id ON tender_history (tender_id);
+
+
+CREATE TABLE bid_history (
+    id VARCHAR PRIMARY KEY,
+    bid_id VARCHAR NOT NULL,
+    name VARCHAR(100),
+    description TEXT,
+    status VARCHAR,
+    tender_id VARCHAR,
+    author_type VARCHAR,
+    author_id VARCHAR,
+    creator_username VARCHAR(50),
+    version INTEGER,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    valid_from TIMESTAMP,
+    valid_to TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_bid_history_bid_id ON bid_history (bid_id);

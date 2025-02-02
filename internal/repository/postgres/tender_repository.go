@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -246,12 +247,116 @@ func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tende
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil {
-
 			if err != sql.ErrTxDone && err != sql.ErrConnDone {
 				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
 			}
 		}
 	}()
+
+	stmt1, err := tx.PrepareContext(ctx, `
+		UPDATE tender
+		SET name = $2, description = $3, service_type = $4, organization_id = $5, creator_username = $6, status = $7, version = $8, updated_at = $9
+		WHERE id = $1
+		RETURNING id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement for updating tender: %w", err)
+	}
+	defer stmt1.Close()
+
+	row1 := stmt1.QueryRowContext(ctx,
+		tender.ID,
+		tender.Name,
+		tender.Description,
+		tender.ServiceType,
+		tender.OrganizationID,
+		tender.CreatorUsername,
+		tender.Status,
+		tender.Version+1,
+		time.Now(),
+	)
+
+	var updatedTender model.Tender
+	if err := row1.Scan(
+		&updatedTender.ID,
+		&updatedTender.Name,
+		&updatedTender.Description,
+		&updatedTender.ServiceType,
+		&updatedTender.OrganizationID,
+		&updatedTender.CreatorUsername,
+		&updatedTender.Status,
+		&updatedTender.Version,
+		&updatedTender.CreatedAt,
+		&updatedTender.UpdatedAt,
+	); err != nil {
+		return nil, fmt.Errorf("failed to scan updated tender: %w", err)
+	}
+
+	stmt2, err := tx.PrepareContext(ctx, `
+        INSERT INTO tender_history (id, tender_id, name, description, service_type, status, organization_id, creator_username, version, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement for inserting tender history: %w", err)
+	}
+	defer stmt2.Close()
+
+	_, err = stmt2.ExecContext(ctx,
+		uuid.New().String(),
+		tender.ID,
+		tender.Name,
+		tender.Description,
+		tender.ServiceType,
+		tender.Status,
+		tender.OrganizationID,
+		tender.CreatorUsername,
+		tender.Version,
+		tender.CreatedAt,
+		time.Now(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert tender history: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return &updatedTender, nil
+}
+func (r *tenderRepository) RollbackTenderVersion(ctx context.Context, tenderID string, version int) (*model.Tender, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			if err != sql.ErrTxDone && err != sql.ErrConnDone {
+				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+			}
+		}
+	}()
+
+	var historyTender model.Tender
+	err = tx.QueryRowContext(ctx, `
+		SELECT tender_id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
+		FROM tender_history
+		WHERE tender_id = $1 AND version = $2
+	`, tenderID, version).Scan(
+		&historyTender.ID,
+		&historyTender.Name,
+		&historyTender.Description,
+		&historyTender.ServiceType,
+		&historyTender.OrganizationID,
+		&historyTender.CreatorUsername,
+		&historyTender.Status,
+		&historyTender.Version,
+		&historyTender.CreatedAt,
+		&historyTender.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tender history: %w", err)
+	}
 
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE tender
@@ -265,14 +370,14 @@ func (r *tenderRepository) UpdateTender(ctx context.Context, tender *model.Tende
 	defer stmt.Close()
 
 	row := stmt.QueryRowContext(ctx,
-		tender.ID,
-		tender.Name,
-		tender.Description,
-		tender.ServiceType,
-		tender.OrganizationID,
-		tender.CreatorUsername,
-		tender.Status,
-		tender.Version+1,
+		historyTender.ID,
+		historyTender.Name,
+		historyTender.Description,
+		historyTender.ServiceType,
+		historyTender.OrganizationID,
+		historyTender.CreatorUsername,
+		historyTender.Status,
+		historyTender.Version,
 		time.Now(),
 	)
 

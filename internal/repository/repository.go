@@ -12,6 +12,7 @@ type TenderRepository interface {
 	GetTenderByUsername(context.Context, int, int, string) ([]model.Tender, error)
 	UpdateTender(context.Context, *model.Tender) (*model.Tender, error)
 	IsUserResponsibleForTender(context.Context, string, string) (bool, error)
+	RollbackTenderVersion(context.Context, string, int) (*model.Tender, error)
 }
 
 type OrganizationRepository interface {

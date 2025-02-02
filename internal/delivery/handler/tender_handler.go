@@ -21,6 +21,7 @@ type TenderHandler interface {
 	GetTenderStatus(c *fiber.Ctx) error
 	UpdateTenderStatus(c *fiber.Ctx) error
 	EditTender(c *fiber.Ctx) error
+	RollbackTender(c *fiber.Ctx) error
 }
 
 func NewTenderHandler(tenderService service.TenderService, logger *slog.Logger) TenderHandler {
@@ -155,4 +156,16 @@ func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(updatedTender)
+}
+
+func (h *tenderHandler) RollbackTender(c *fiber.Ctx) error {
+	ctx := c.Context()
+	tenderID := c.Params("tenderId")
+	version := c.QueryInt("version")
+
+	_, err := h.tenderService.RollbackTenderVersion(ctx, tenderID, version)
+	if err != nil {
+		h.logger.Error("Error rolling back tender", "error", err)
+	}
+	return c.Status(fiber.StatusOK).JSON(model.ErrorResponse{Reason: "Tender rollbacked successfully"})
 }
