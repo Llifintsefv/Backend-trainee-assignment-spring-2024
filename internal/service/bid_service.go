@@ -4,6 +4,7 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
 	"Backend-trainee-assignment-autumn-2024/internal/repository"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -36,6 +37,9 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 	_, err := s.tenderRepository.GetTenderById(ctx, bidRequest.TenderID)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender", slog.Any("error", err))
+		if errors.Is(err, model.ErrTenderNotFound) {
+			return nil, model.ErrTenderNotFound
+		}
 		return nil, fmt.Errorf("Error getting tender, %w", err)
 	}
 
@@ -50,9 +54,12 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 			return nil, fmt.Errorf("Error getting organization, %w", err)
 		}
 	} else {
-		_, err := s.userRepository.GetUserById(ctx, bidRequest.CreatorUsername)
+		_, err := s.userRepository.GetUserByUsername(ctx, bidRequest.CreatorUsername)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+			if errors.Is(err, model.ErrUserNotFound) {
+				return nil, model.ErrUserNotFound
+			}
 			return nil, fmt.Errorf("Error getting user, %w", err)
 		}
 		authorID = bidRequest.CreatorUsername
@@ -83,6 +90,15 @@ func (s *bidService) CreateBid(ctx context.Context, bidRequest *model.CreateBidR
 }
 
 func (s *bidService) GetCurrentUserBids(ctx context.Context, limit int, offset int, username string) ([]model.Bid, error) {
+	_, err := s.userRepository.GetUserByUsername(ctx, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, model.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("Error getting user: %w", err)
+	}
+
 	bid, err := s.BidRepository.GetBidByUsername(ctx, limit, offset, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
@@ -96,18 +112,27 @@ func (s *bidService) GetTenderBids(ctx context.Context, tenderID string, limit i
 	_, err := s.userRepository.GetUserByUsername(ctx, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, model.ErrUserNotFound
+		}
 		return nil, fmt.Errorf("Error getting user, %w", err)
 	}
 
 	_, err = s.tenderRepository.GetTenderById(ctx, tenderID)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender", slog.Any("error", err))
+		if errors.Is(err, model.ErrTenderNotFound) {
+			return nil, model.ErrTenderNotFound
+		}
 		return nil, fmt.Errorf("Error getting tender, %w", err)
 	}
 
 	bids, err := s.BidRepository.GetTenderBids(ctx, tenderID, limit, offset, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
+		if errors.Is(err, model.ErrBidNotFound) {
+			return nil, model.ErrBidNotFound
+		}
 		return nil, fmt.Errorf("Error getting bids, %w", err)
 	}
 	return bids, nil
@@ -115,36 +140,53 @@ func (s *bidService) GetTenderBids(ctx context.Context, tenderID string, limit i
 
 func (s *bidService) GetBidStatus(ctx context.Context, bidID string, username string) (model.BidStatus, error) {
 
-	_, err := s.BidRepository.GetBidByUsername(ctx, 5, 0, username)
+	_, err := s.userRepository.GetUserByUsername(ctx, username)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
-		return "", fmt.Errorf("Error getting bid, %w", err)
+		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return "", model.ErrUserNotFound
+		}
+		return "", fmt.Errorf("Error getting user: %w", err)
 	}
 
 	status, err := s.BidRepository.GetBidStatus(ctx, bidID)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting bid status", slog.Any("error", err))
+		if errors.Is(err, model.ErrBidNotFound) {
+			return "", model.ErrBidNotFound
+		}
 		return "", fmt.Errorf("Error getting bid status, %w", err)
 	}
 	return status, nil
 }
 
 func (s *bidService) UpdateBidStatus(ctx context.Context, bidID string, username string, status string) (model.BidStatus, error) {
+	_, err := s.userRepository.GetUserByUsername(ctx, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return "", model.ErrUserNotFound
+		}
+		return "", fmt.Errorf("Error getting user: %w", err)
+	}
 
 	bid, err := s.BidRepository.GetBidById(ctx, bidID)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
+		if errors.Is(err, model.ErrBidNotFound) {
+			return "", model.ErrBidNotFound
+		}
 		return "", fmt.Errorf("Error getting bid, %w", err)
 	}
 
-	isResponsible, err := s.organizationRepository.IsUserResponsibleForOrganization(ctx, bid.TenderID, username)
+	isResponsible, err := s.organizationRepository.IsUserResponsibleForOrganization(ctx, bid.AuthorID, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting responsible for organization", slog.Any("error", err))
 		return "", fmt.Errorf("Error getting responsible for organization, %w", err)
 	}
 	if !isResponsible {
 		s.logger.ErrorContext(ctx, "User is not responsible for organization", slog.Any("error", err))
-		return "", fmt.Errorf("User is not responsible for organization, %w", err)
+		return "", model.ErrForbidden
 	}
 
 	bid.Status = model.BidStatus(status)

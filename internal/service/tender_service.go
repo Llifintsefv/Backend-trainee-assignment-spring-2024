@@ -35,12 +35,15 @@ func (s *tenderService) CreateTender(ctx context.Context, createTenderRequest *m
 	isResponsible, err := s.OrganizationRepository.IsUserResponsibleForOrganization(ctx, createTenderRequest.OrganizationID, createTenderRequest.CreatorUsername)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error checking user is responsible for tender", slog.Any("error", err))
+		if err == repository.ErrUserNotFound {
+			return nil, model.ErrUserNotFound
+		}
 		return nil, err
 	}
 
 	if !isResponsible {
-		s.logger.ErrorContext(ctx, "User is not responsible for the tender", slog.Any("error", err))
-		return nil, err
+		s.logger.ErrorContext(ctx, "User is not responsible for the tender", slog.String("username", createTenderRequest.CreatorUsername), slog.String("organizationID", createTenderRequest.OrganizationID))
+		return nil, model.ErrForbidden
 	}
 
 	tender := &model.Tender{}
@@ -78,6 +81,9 @@ func (s *tenderService) GetTenderById(ctx context.Context, id string) (*model.Te
 	tender, err := s.TenderRepository.GetTenderById(ctx, id)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender by id", slog.Any("error", err))
+		if err == repository.ErrTenderNotFound {
+			return nil, model.ErrTenderNotFound
+		}
 		return nil, err
 	}
 	return tender, nil
@@ -88,6 +94,9 @@ func (s *tenderService) GetCurrentUserTenders(ctx context.Context, limit int, of
 	tenders, err := s.TenderRepository.GetTenderByUsername(ctx, limit, offset, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
+		if err == repository.ErrUserNotFound {
+			return nil, model.ErrUserNotFound
+		}
 		return nil, err
 	}
 
@@ -99,6 +108,9 @@ func (s *tenderService) GetTenderStatus(ctx context.Context, id string) (string,
 	tender, err := s.TenderRepository.GetTenderById(ctx, id)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender status", slog.Any("error", err))
+		if err == repository.ErrTenderNotFound {
+			return "", model.ErrTenderNotFound
+		}
 		return "", err
 	}
 	return string(tender.Status), nil
@@ -109,22 +121,28 @@ func (s *tenderService) UpdateTenderStatus(ctx context.Context, id string, usern
 	isResponsible, err := s.TenderRepository.IsUserResponsibleForTender(ctx, id, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error checking user is responsible for tender", slog.Any("error", err))
+		if err == repository.ErrUserNotFound {
+			return nil, model.ErrUserNotFound
+		}
 		return nil, err
 	}
 
 	if !isResponsible {
-		s.logger.ErrorContext(ctx, "User is not responsible for the tender", slog.Any("error", err))
-		return nil, err
+		s.logger.ErrorContext(ctx, "User is not responsible for the tender", slog.String("username", username), slog.String("tenderID", id))
+		return nil, model.ErrForbidden
 	}
 
 	tender, err := s.TenderRepository.GetTenderById(ctx, id)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender status", slog.Any("error", err))
+		if err == repository.ErrTenderNotFound {
+			return nil, model.ErrTenderNotFound
+		}
 		return nil, err
 	}
 
 	if tender.Status == model.TenderStatus(status) {
-		s.logger.ErrorContext(ctx, "Status is the same", slog.Any("error", err))
+		s.logger.ErrorContext(ctx, "Status is the same", slog.String("status", status))
 		return nil, err
 	}
 
@@ -143,27 +161,30 @@ func (s *tenderService) EditTender(ctx context.Context, id string, username stri
 	tender, err := s.TenderRepository.GetTenderById(ctx, id)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting tender", slog.Any("error", err))
+		if err == repository.ErrTenderNotFound {
+			return nil, model.ErrTenderNotFound
+		}
 		return nil, err
 	}
 
 	if tender.CreatorUsername != username {
-		s.logger.ErrorContext(ctx, "User is not the creator of the tender", slog.Any("error", err))
-		return nil, err
+		s.logger.ErrorContext(ctx, "User is not the creator of the tender", slog.String("username", username), slog.String("tenderID", id))
+		return nil, model.ErrForbidden
 	}
-		if updateData.Name != nil { 
-		if *updateData.Name != "" { 
+	if updateData.Name != nil {
+		if *updateData.Name != "" {
 			tender.Name = *updateData.Name
 		}
 	}
 
-	if updateData.Description != nil { 
+	if updateData.Description != nil {
 		if *updateData.Description != "" {
 			tender.Description = *updateData.Description
 		}
 	}
 
-	if updateData.ServiceType != nil { 
-		if *updateData.ServiceType != "" { 
+	if updateData.ServiceType != nil {
+		if *updateData.ServiceType != "" {
 			tender.ServiceType = model.TenderServiceType(*updateData.ServiceType)
 		}
 	}
@@ -182,6 +203,12 @@ func (s *tenderService) RollbackTenderVersion(ctx context.Context, id string, ve
 	tender, err := s.TenderRepository.RollbackTenderVersion(ctx, id, version)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error rolling back tender version", slog.Any("error", err))
+		if err == repository.ErrVersionNotFound {
+			return nil, model.ErrVersionNotFound
+		}
+		if err == repository.ErrTenderNotFound {
+			return nil, model.ErrTenderNotFound
+		}
 		return nil, err
 	}
 	return tender, nil

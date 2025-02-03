@@ -4,6 +4,7 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
 	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
+	"errors"
 	"log/slog"
 	"strconv"
 
@@ -46,9 +47,12 @@ func (h *tenderHandler) CreateTender(c *fiber.Ctx) error {
 	tender, err := h.tenderService.CreateTender(ctx, createTenderRequest)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error creating tender", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error creating tender"})
 	}
-	return c.Status(fiber.StatusCreated).JSON(tender)
+	return c.Status(fiber.StatusOK).JSON(tender)
 
 }
 
@@ -93,6 +97,9 @@ func (h *tenderHandler) GetCurrentUserTenders(c *fiber.Ctx) error {
 	tenders, err := h.tenderService.GetCurrentUserTenders(ctx, getCurrentUserTendersRequest.Limit, getCurrentUserTendersRequest.Offset, getCurrentUserTendersRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tenders"})
 	}
 	return c.Status(fiber.StatusOK).JSON(tenders)
@@ -105,6 +112,11 @@ func (h *tenderHandler) GetTenderStatus(c *fiber.Ctx) error {
 
 	getTenderStatusRequest.TenderID = c.Params("tenderId")
 
+	if err := c.QueryParser(getTenderStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
+
 	if err := utils.ValidateStruct(getTenderStatusRequest); err != nil {
 		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
@@ -113,6 +125,9 @@ func (h *tenderHandler) GetTenderStatus(c *fiber.Ctx) error {
 	status, err := h.tenderService.GetTenderStatus(ctx, getTenderStatusRequest.TenderID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tender status", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tender status"})
 	}
 	return c.Status(fiber.StatusOK).JSON(status)
@@ -136,6 +151,15 @@ func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
 	tender, err := h.tenderService.UpdateTenderStatus(ctx, updateTenderStatusRequest.TenderID, updateTenderStatusRequest.Username, string(updateTenderStatusRequest.Status))
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error updating tender status", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrTenderNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating tender status"})
 	}
 	return c.Status(fiber.StatusOK).JSON(tender)
@@ -166,6 +190,10 @@ func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
 	updatedTender, err := h.tenderService.EditTender(ctx, editTenderRequest.TenderID, editTenderRequest.Username, editTenderRequest.UpdateData)
 	if err != nil {
 		h.logger.Error("Error updating tender", "error", err)
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating tender"})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(updatedTender)
@@ -178,6 +206,11 @@ func (h *tenderHandler) RollbackTender(c *fiber.Ctx) error {
 	rollbackTenderRequest.TenderID = c.Params("tenderId")
 	rollbackTenderRequest.Version = c.Params("version")
 
+	if err := c.QueryParser(rollbackTenderRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
+
 	if err := utils.ValidateStruct(rollbackTenderRequest); err != nil {
 		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
@@ -186,12 +219,22 @@ func (h *tenderHandler) RollbackTender(c *fiber.Ctx) error {
 	version, err := strconv.Atoi(rollbackTenderRequest.Version)
 	if err != nil {
 		h.logger.Error("Error converting version to int", "error", err)
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid version parameter"})
 	}
 
-	_, err = h.tenderService.RollbackTenderVersion(ctx, rollbackTenderRequest.TenderID, version)
+	tender, err := h.tenderService.RollbackTenderVersion(ctx, rollbackTenderRequest.TenderID, version)
 	if err != nil {
 		h.logger.Error("Error rolling back tender", "error", err)
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrTenderNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error rolling back tender"})
 	}
-	return c.Status(fiber.StatusOK).JSON(model.ErrorResponse{Reason: "Tender rollbacked successfully"})
+	return c.Status(fiber.StatusOK).JSON(tender)
 }

@@ -5,6 +5,7 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/repository"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -158,11 +159,11 @@ func (r *tenderRepository) GetTenderById(ctx context.Context, id string) (*model
 		&tender.UpdatedAt,
 	)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			r.logger.ErrorContext(ctx, "Error getting tender by id", slog.Any("error", err))
-			return nil, fmt.Errorf("failed to execute query for getting tender by id: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrTenderNotFound
 		}
-		return nil, err
+		r.logger.ErrorContext(ctx, "Error getting tender by id", slog.Any("error", err))
+		return nil, fmt.Errorf("failed to execute query for getting tender by id: %w", err)
 	}
 
 	return &tender, nil
@@ -232,8 +233,10 @@ func (r *tenderRepository) IsUserResponsibleForTender(ctx context.Context, tende
 	var exists bool
 
 	err = stmt.QueryRowContext(ctx, tenderID, username).Scan(&exists)
-
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, repository.ErrUserNotFound
+		}
 		return false, fmt.Errorf("error checking user is responsible: %w", err)
 	}
 
@@ -356,6 +359,9 @@ func (r *tenderRepository) RollbackTenderVersion(ctx context.Context, tenderID s
 		&historyTender.UpdatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrVersionNotFound
+		}
 		return nil, fmt.Errorf("failed to get tender history: %w", err)
 	}
 
@@ -395,6 +401,9 @@ func (r *tenderRepository) RollbackTenderVersion(ctx context.Context, tenderID s
 		&updatedTender.CreatedAt,
 		&updatedTender.UpdatedAt,
 	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrTenderNotFound
+		}
 		return nil, fmt.Errorf("failed to scan updated tender: %w", err)
 	}
 
@@ -404,5 +413,3 @@ func (r *tenderRepository) RollbackTenderVersion(ctx context.Context, tenderID s
 
 	return &updatedTender, nil
 }
-
-

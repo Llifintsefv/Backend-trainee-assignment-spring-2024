@@ -4,6 +4,7 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
 	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
+	"errors"
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
@@ -44,6 +45,9 @@ func (h *bidHandler) CreateBid(c *fiber.Ctx) error {
 	bid, err := h.service.CreateBid(ctx, createBidRequest)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error creating bid", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error creating bid"})
 	}
 	return c.Status(fiber.StatusCreated).JSON(bid)
@@ -67,6 +71,9 @@ func (h *bidHandler) GetCurrentUserBids(c *fiber.Ctx) error {
 	bids, err := h.service.GetCurrentUserBids(ctx, getCurrentUserBidsRequest.Limit, getCurrentUserBidsRequest.Offset, getCurrentUserBidsRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bids"})
 	}
 	return c.Status(fiber.StatusOK).JSON(bids)
@@ -91,6 +98,15 @@ func (h *bidHandler) GetTenderBids(c *fiber.Ctx) error {
 	bids, err := h.service.GetTenderBids(ctx, getTenderBidsRequest.TenderID, getTenderBidsRequest.Limit, getTenderBidsRequest.Offset, getTenderBidsRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrTenderNotFound) || errors.Is(err, model.ErrBidNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bids"})
 	}
 	return c.Status(fiber.StatusOK).JSON(bids)
@@ -115,6 +131,9 @@ func (h *bidHandler) GetBidStatus(c *fiber.Ctx) error {
 	status, err := h.service.GetBidStatus(ctx, getBidStatusRequest.BidID, getBidStatusRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bid status", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bid status"})
 	}
 	return c.Status(fiber.StatusOK).JSON(status)
@@ -139,6 +158,15 @@ func (h *bidHandler) UpdateBidStatus(c *fiber.Ctx) error {
 	status, err := h.service.UpdateBidStatus(ctx, updateBidStatusRequest.BidID, updateBidStatusRequest.Username, string(updateBidStatusRequest.Status))
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error updating bid status", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrBidNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating bid status"})
 	}
 	return c.Status(fiber.StatusOK).JSON(status)

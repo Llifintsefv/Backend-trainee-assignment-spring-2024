@@ -3,6 +3,13 @@ package repository
 import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
 	"context"
+	"errors"
+)
+
+var (
+	ErrUserNotFound    = errors.New("user not found")
+	ErrTenderNotFound  = errors.New("tender not found")
+	ErrVersionNotFound = errors.New("version not found")
 )
 
 type TenderRepository interface {
