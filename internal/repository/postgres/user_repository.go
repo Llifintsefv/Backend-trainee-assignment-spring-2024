@@ -84,3 +84,33 @@ func (r *userRepository) GetUserByUsername(ctx context.Context, username string)
 
 	return &user, nil
 }
+
+func (r *userRepository) GetOrganizationByUsername(ctx context.Context, username string) (*model.Organization, error) {
+
+	stmt, err := r.db.PrepareContext(ctx, `
+		SELECT id, name, created_at, updated_at
+		FROM organization  
+		WHERE username = $1
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement for getting organization by username: %w", err)
+	}
+	defer stmt.Close()
+
+	organization := model.Organization{}
+	err = stmt.QueryRowContext(ctx, username).Scan(
+		&organization.Id,
+		&organization.Name,
+		&organization.Created_at,
+		&organization.Updated_at,
+	)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			r.logger.ErrorContext(ctx, "Error getting organization by username", slog.Any("error", err))
+			return nil, fmt.Errorf("failed to execute query for getting organization by username: %w", err)
+		}
+		return nil, err
+	}
+
+	return &organization, nil
+}

@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 type bidRepository struct {
@@ -48,6 +49,40 @@ func (r *bidRepository) CreateBid(ctx context.Context, bidRequest *model.Bid) (*
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	return &bid, nil
+}
+
+func (r *bidRepository) GetBidById(ctx context.Context, id string) (*model.Bid, error) {
+	stmt, err := r.db.PrepareContext(ctx, `
+	SELECT id, name, description, status, tender_id, author_type, author_id, creator_username, version, created_at, updated_at
+	FROM bid
+	WHERE id = $1`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	var bid model.Bid
+	err = stmt.QueryRowContext(ctx, id).Scan(
+		&bid.ID,
+		&bid.Name,
+		&bid.Description,
+		&bid.Status,
+		&bid.TenderID,
+		&bid.AuthorType,
+		&bid.AuthorID,
+		&bid.CreatorUsername,
+		&bid.Version,
+		&bid.CreatedAt,
+		&bid.UpdatedAt,
+	)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			r.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
+			return nil, fmt.Errorf("failed to execute query: %w", err)
+		}
+		return nil, err
+	}
 	return &bid, nil
 }
 
@@ -143,4 +178,51 @@ func (r *bidRepository) GetBidStatus(ctx context.Context, bidID string) (model.B
 	}
 
 	return status, nil
+}
+
+func (r *bidRepository) UpdateBid(ctx context.Context, bid *model.Bid) (*model.Bid, error) {
+	stmt, err := r.db.PrepareContext(ctx, `
+		UPDATE bid
+		SET name = $1, description = $2, status = $3, tender_id = $4, author_type = $5, author_id = $6, creator_username = $7, version = $8, created_at = $9, updated_at = $10
+		WHERE id = $11
+		RETURNING id, name, description, status, tender_id, author_type, author_id, creator_username, version, created_at, updated_at
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	bid.Version++
+	bid.UpdatedAt = time.Now()
+
+	err = stmt.QueryRowContext(ctx,
+		bid.Name,
+		bid.Description,
+		bid.Status,
+		bid.TenderID,
+		bid.AuthorType,
+		bid.AuthorID,
+		bid.CreatorUsername,
+		bid.Version,
+		bid.CreatedAt,
+		bid.UpdatedAt,
+		bid.ID,
+	).Scan(
+		&bid.ID,
+		&bid.Name,
+		&bid.Description,
+		&bid.Status,
+		&bid.TenderID,
+		&bid.AuthorType,
+		&bid.AuthorID,
+		&bid.CreatorUsername,
+		&bid.Version,
+		&bid.CreatedAt,
+		&bid.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	return bid, nil
 }

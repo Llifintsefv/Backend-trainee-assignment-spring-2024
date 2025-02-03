@@ -23,11 +23,14 @@ type OrganizationRepository interface {
 type UserRepository interface {
 	GetUserById(context.Context, string) (*model.User, error)
 	GetUserByUsername(context.Context, string) (*model.User, error)
+	GetOrganizationByUsername(context.Context, string) (*model.Organization, error)
 }
 
 type BidRepository interface {
 	CreateBid(context.Context, *model.Bid) (*model.Bid, error)
+	GetBidById(context.Context, string) (*model.Bid, error)
 	GetBidByUsername(context.Context, int, int, string) ([]model.Bid, error)
 	GetTenderBids(context.Context, string, int, int, string) ([]model.Bid, error)
 	GetBidStatus(context.Context, string) (model.BidStatus, error)
+	UpdateBid(context.Context, *model.Bid) (*model.Bid, error)
 }

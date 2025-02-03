@@ -19,6 +19,7 @@ type BidHandler interface {
 	GetCurrentUserBids(c *fiber.Ctx) error
 	GetTenderBids(c *fiber.Ctx) error
 	GetBidStatus(c *fiber.Ctx) error
+	UpdateBidStatus(c *fiber.Ctx) error
 }
 
 func NewBidHandler(bidService service.BidService, logger *slog.Logger) BidHandler {
@@ -113,6 +114,31 @@ func (h *bidHandler) GetBidStatus(c *fiber.Ctx) error {
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bid status", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bid status"})
+	}
+	return c.Status(fiber.StatusOK).JSON(status)
+}
+
+
+func (h *bidHandler) UpdateBidStatus(c *fiber.Ctx) error {
+	ctx := c.Context()
+	id := c.Params("bidId")
+	username := c.Query("username")
+	TargetStatus := c.Query("status")
+
+	validStatuses := map[string]bool{
+		"Created":   true,
+		"Published": true,
+		"Closed":    true,
+	}
+	if !validStatuses[TargetStatus] {
+		h.logger.ErrorContext(ctx, "Invalid bid status", slog.String("status", TargetStatus))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid bid status. Allowed values are: Created, Published, Closed"})
+	}
+
+	status, err := h.service.UpdateBidStatus(ctx, id, username, TargetStatus)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error updating bid status", slog.Any("error", err))
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating bid status"})
 	}
 	return c.Status(fiber.StatusOK).JSON(status)
 }

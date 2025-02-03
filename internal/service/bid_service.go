@@ -16,6 +16,7 @@ type BidService interface {
 	GetCurrentUserBids(ctx context.Context, limit int, offset int, username string) ([]model.Bid, error)
 	GetTenderBids(ctx context.Context, tenderID string, limit int, offset int, username string) ([]model.Bid, error)
 	GetBidStatus(ctx context.Context, bidID string, username string) (model.BidStatus, error)
+	UpdateBidStatus(ctx context.Context, bidID string, username string, status string) (model.BidStatus, error)
 }
 
 type bidService struct {
@@ -114,7 +115,7 @@ func (s *bidService) GetTenderBids(ctx context.Context, tenderID string, limit i
 
 func (s *bidService) GetBidStatus(ctx context.Context, bidID string, username string) (model.BidStatus, error) {
 
-	_, err := s.BidRepository.GetBidByUsername(ctx, 5,0,username)
+	_, err := s.BidRepository.GetBidByUsername(ctx, 5, 0, username)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
 		return "", fmt.Errorf("Error getting bid, %w", err)
@@ -126,4 +127,23 @@ func (s *bidService) GetBidStatus(ctx context.Context, bidID string, username st
 		return "", fmt.Errorf("Error getting bid status, %w", err)
 	}
 	return status, nil
+}
+
+func (s *bidService) UpdateBidStatus(ctx context.Context, bidID string, username string, status string) (model.BidStatus, error) {
+
+	bid, err := s.BidRepository.GetBidById(ctx, bidID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
+		return "", fmt.Errorf("Error getting bid, %w", err)
+	}
+
+	bid.Status = model.BidStatus(status)
+
+	bid, err = s.BidRepository.UpdateBid(ctx, bid)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error updating bid", slog.Any("error", err))
+		return "", fmt.Errorf("Error updating bid, %w", err)
+	}
+	return bid.Status, nil
+
 }
