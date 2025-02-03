@@ -17,6 +17,7 @@ type bidHandler struct {
 type BidHandler interface {
 	CreateBid(c *fiber.Ctx) error
 	GetCurrentUserBids(c *fiber.Ctx) error
+	GetTenderBids(c *fiber.Ctx) error
 }
 
 func NewBidHandler(bidService service.BidService, logger *slog.Logger) BidHandler {
@@ -53,8 +54,41 @@ func (h *bidHandler) GetCurrentUserBids(c *fiber.Ctx) error {
 	offset := c.QueryInt("offset", 0)
 	user := c.Queries()["username"]
 
+	if user == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "username is required"})
+	}
+
+	if offset < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid offset"})
+	}
+
 	var bids []model.Bid
 	bids, err := h.service.GetCurrentUserBids(ctx, limit, offset, user)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bids"})
+	}
+	return c.Status(fiber.StatusOK).JSON(bids)
+}
+
+func (h *bidHandler) GetTenderBids(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	limit := c.QueryInt("limit", 5)
+	offset := c.QueryInt("offset", 0)
+	username := c.Query("username")
+	tenderID := c.Params("tenderId")
+
+	if username == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "username is required"})
+	}
+
+	if offset < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid offset"})
+	}
+
+	var bids []model.Bid
+	bids, err := h.service.GetTenderBids(ctx, tenderID, limit, offset, username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bids"})

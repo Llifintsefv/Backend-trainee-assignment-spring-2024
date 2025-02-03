@@ -14,6 +14,7 @@ import (
 type BidService interface {
 	CreateBid(ctx context.Context, bid *model.CreateBidRequest) (*model.Bid, error)
 	GetCurrentUserBids(ctx context.Context, limit int, offset int, username string) ([]model.Bid, error)
+	GetTenderBids(ctx context.Context, tenderID string, limit int, offset int, username string) ([]model.Bid, error)
 }
 
 type bidService struct {
@@ -86,4 +87,26 @@ func (s *bidService) GetCurrentUserBids(ctx context.Context, limit int, offset i
 		return nil, fmt.Errorf("Error getting bids, %w", err)
 	}
 	return bid, nil
+}
+
+func (s *bidService) GetTenderBids(ctx context.Context, tenderID string, limit int, offset int, username string) ([]model.Bid, error) {
+
+	_, err := s.userRepository.GetUserByUsername(ctx, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		return nil, fmt.Errorf("Error getting user, %w", err)
+	}
+
+	_, err = s.tenderRepository.GetTenderById(ctx, tenderID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting tender", slog.Any("error", err))
+		return nil, fmt.Errorf("Error getting tender, %w", err)
+	}
+
+	bids, err := s.BidRepository.GetTenderBids(ctx, tenderID, limit, offset, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
+		return nil, fmt.Errorf("Error getting bids, %w", err)
+	}
+	return bids, nil
 }

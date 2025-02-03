@@ -85,3 +85,38 @@ func (r *bidRepository) GetBidByUsername(ctx context.Context, limit int, offset 
 
 	return bids, nil
 }
+
+func (r *bidRepository) GetTenderBids(ctx context.Context, tenderID string, limit int, offset int, username string) ([]model.Bid, error) {
+	stmt, err := r.db.PrepareContext(ctx, `
+		SELECT id, name, description, status, tender_id, author_type, author_id, creator_username, version, created_at, updated_at
+		FROM bid
+		WHERE tender_id = $1
+		LIMIT $2 OFFSET $3
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, tenderID, limit, offset)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			r.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
+			return nil, fmt.Errorf("failed to execute query: %w", err)
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	var bids []model.Bid
+	for rows.Next() {
+		bid := model.Bid{}
+		err := rows.Scan(&bid.ID, &bid.Name, &bid.Description, &bid.Status, &bid.TenderID, &bid.AuthorType, &bid.AuthorID, &bid.CreatorUsername, &bid.Version, &bid.CreatedAt, &bid.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+		bids = append(bids, bid)
+	}
+
+	return bids, nil
+}
