@@ -52,20 +52,19 @@ func (h *bidHandler) CreateBid(c *fiber.Ctx) error {
 func (h *bidHandler) GetCurrentUserBids(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	limit := c.QueryInt("limit", 5)
-	offset := c.QueryInt("offset", 0)
-	user := c.Queries()["username"]
+	getCurrentUserBidsRequest := new(model.GetCurrentUserBidsRequest)
 
-	if user == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "username is required"})
+	if err := c.QueryParser(getCurrentUserBidsRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
 	}
 
-	if offset < 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid offset"})
+	if err := utils.ValidateStruct(getCurrentUserBidsRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
 	}
 
-	var bids []model.Bid
-	bids, err := h.service.GetCurrentUserBids(ctx, limit, offset, user)
+	bids, err := h.service.GetCurrentUserBids(ctx, getCurrentUserBidsRequest.Limit, getCurrentUserBidsRequest.Offset, getCurrentUserBidsRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bids"})
@@ -76,21 +75,20 @@ func (h *bidHandler) GetCurrentUserBids(c *fiber.Ctx) error {
 func (h *bidHandler) GetTenderBids(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	limit := c.QueryInt("limit", 5)
-	offset := c.QueryInt("offset", 0)
-	username := c.Query("username")
-	tenderID := c.Params("tenderId")
+	getTenderBidsRequest := new(model.GetTenderBidsRequest)
+	getTenderBidsRequest.TenderID = c.Params("tenderId")
 
-	if username == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "username is required"})
+	if err := c.QueryParser(getTenderBidsRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
 	}
 
-	if offset < 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid offset"})
+	if err := utils.ValidateStruct(getTenderBidsRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
 	}
 
-	var bids []model.Bid
-	bids, err := h.service.GetTenderBids(ctx, tenderID, limit, offset, username)
+	bids, err := h.service.GetTenderBids(ctx, getTenderBidsRequest.TenderID, getTenderBidsRequest.Limit, getTenderBidsRequest.Offset, getTenderBidsRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bids", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bids"})
@@ -100,17 +98,21 @@ func (h *bidHandler) GetTenderBids(c *fiber.Ctx) error {
 
 func (h *bidHandler) GetBidStatus(c *fiber.Ctx) error {
 	ctx := c.Context()
-	id := c.Params("bidId")
-	username := c.Query("username")
+	getBidStatusRequest := new(model.GetBidStatusRequest)
 
-	if username == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "username is required"})
+	getBidStatusRequest.BidID = c.Params("bidId")
+
+	if err := c.QueryParser(getBidStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
 	}
 
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "bidId is required"})
+	if err := utils.ValidateStruct(getBidStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
 	}
-	status, err := h.service.GetBidStatus(ctx, id, username)
+
+	status, err := h.service.GetBidStatus(ctx, getBidStatusRequest.BidID, getBidStatusRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting bid status", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bid status"})
@@ -118,24 +120,23 @@ func (h *bidHandler) GetBidStatus(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(status)
 }
 
-
 func (h *bidHandler) UpdateBidStatus(c *fiber.Ctx) error {
 	ctx := c.Context()
-	id := c.Params("bidId")
-	username := c.Query("username")
-	TargetStatus := c.Query("status")
+	updateBidStatusRequest := new(model.UpdateBidStatusRequest)
 
-	validStatuses := map[string]bool{
-		"Created":   true,
-		"Published": true,
-		"Closed":    true,
-	}
-	if !validStatuses[TargetStatus] {
-		h.logger.ErrorContext(ctx, "Invalid bid status", slog.String("status", TargetStatus))
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid bid status. Allowed values are: Created, Published, Closed"})
+	updateBidStatusRequest.BidID = c.Params("bidId")
+
+	if err := c.QueryParser(updateBidStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
 	}
 
-	status, err := h.service.UpdateBidStatus(ctx, id, username, TargetStatus)
+	if err := utils.ValidateStruct(updateBidStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	status, err := h.service.UpdateBidStatus(ctx, updateBidStatusRequest.BidID, updateBidStatusRequest.Username, string(updateBidStatusRequest.Status))
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error updating bid status", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating bid status"})

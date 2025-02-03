@@ -137,6 +137,16 @@ func (s *bidService) UpdateBidStatus(ctx context.Context, bidID string, username
 		return "", fmt.Errorf("Error getting bid, %w", err)
 	}
 
+	isResponsible, err := s.organizationRepository.IsUserResponsibleForOrganization(ctx, bid.TenderID, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting responsible for organization", slog.Any("error", err))
+		return "", fmt.Errorf("Error getting responsible for organization, %w", err)
+	}
+	if !isResponsible {
+		s.logger.ErrorContext(ctx, "User is not responsible for organization", slog.Any("error", err))
+		return "", fmt.Errorf("User is not responsible for organization, %w", err)
+	}
+
 	bid.Status = model.BidStatus(status)
 
 	bid, err = s.BidRepository.UpdateBid(ctx, bid)

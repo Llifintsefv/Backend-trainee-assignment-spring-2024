@@ -4,7 +4,6 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
 	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
-	"fmt"
 	"log/slog"
 	"strconv"
 
@@ -68,12 +67,7 @@ func (h *tenderHandler) GetTenders(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
 	}
 
-	limit := getTendersRequest.Limit
-	offset := getTendersRequest.Offset
-	serviceTypes := getTendersRequest.ServiceTypes
-
-	var tenders []model.Tender
-	tenders, err := h.tenderService.GetTenders(ctx, limit, offset, serviceTypes)
+	tenders, err := h.tenderService.GetTenders(ctx, getTendersRequest.Limit, getTendersRequest.Offset, getTendersRequest.ServiceTypes)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tenders"})
@@ -84,12 +78,19 @@ func (h *tenderHandler) GetTenders(c *fiber.Ctx) error {
 func (h *tenderHandler) GetCurrentUserTenders(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	limit := c.QueryInt("limit", 5)
-	offset := c.QueryInt("offset", 0)
-	user := c.Queries()["username"]
+	getCurrentUserTendersRequest := new(model.GetCurrentUserTendersRequest)
 
-	var tenders []model.Tender
-	tenders, err := h.tenderService.GetCurrentUserTenders(ctx, limit, offset, user)
+	if err := c.QueryParser(getCurrentUserTendersRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
+
+	if err := utils.ValidateStruct(getCurrentUserTendersRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	tenders, err := h.tenderService.GetCurrentUserTenders(ctx, getCurrentUserTendersRequest.Limit, getCurrentUserTendersRequest.Offset, getCurrentUserTendersRequest.Username)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tenders", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tenders"})
@@ -100,8 +101,16 @@ func (h *tenderHandler) GetCurrentUserTenders(c *fiber.Ctx) error {
 
 func (h *tenderHandler) GetTenderStatus(c *fiber.Ctx) error {
 	ctx := c.Context()
-	id := c.Params("tenderId")
-	status, err := h.tenderService.GetTenderStatus(ctx, id)
+	getTenderStatusRequest := new(model.GetTenderStatusRequest)
+
+	getTenderStatusRequest.TenderID = c.Params("tenderId")
+
+	if err := utils.ValidateStruct(getTenderStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	status, err := h.tenderService.GetTenderStatus(ctx, getTenderStatusRequest.TenderID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error getting tender status", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting tender status"})
@@ -111,21 +120,20 @@ func (h *tenderHandler) GetTenderStatus(c *fiber.Ctx) error {
 
 func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
 	ctx := c.Context()
-	id := c.Params("tenderId")
-	user := c.Queries()["username"]
-	TargetStatus := c.Queries()["status"]
+	updateTenderStatusRequest := new(model.UpdateTenderStatusRequest)
 
-	validStatuses := map[string]bool{
-		"Created":   true,
-		"Published": true,
-		"Closed":    true,
-	}
-	if !validStatuses[TargetStatus] {
-		h.logger.ErrorContext(ctx, "Invalid tender status", slog.String("status", TargetStatus))
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid tender status. Allowed values are: Created, Published, Closed"})
+	updateTenderStatusRequest.TenderID = c.Params("tenderId")
+	if err := c.QueryParser(updateTenderStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
 	}
 
-	tender, err := h.tenderService.UpdateTenderStatus(ctx, id, user, TargetStatus)
+	if err := utils.ValidateStruct(updateTenderStatusRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	tender, err := h.tenderService.UpdateTenderStatus(ctx, updateTenderStatusRequest.TenderID, updateTenderStatusRequest.Username, string(updateTenderStatusRequest.Status))
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Error updating tender status", slog.Any("error", err))
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating tender status"})
@@ -137,22 +145,25 @@ func (h *tenderHandler) UpdateTenderStatus(c *fiber.Ctx) error {
 func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	tenderID := c.Params("tenderId")
-	username := c.Query("username")
+	editTenderRequest := new(model.EditTenderRequest)
+	editTenderRequest.TenderID = c.Params("tenderId")
 
-	updateData := model.UpdateData{}
+	if err := c.QueryParser(editTenderRequest); err != nil {
+		h.logger.Error("Error parsing query parameters", "error", err)
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
 
-	if err := c.BodyParser(&updateData); err != nil {
+	if err := c.BodyParser(&editTenderRequest.UpdateData); err != nil {
 		h.logger.Error("Error parsing request body", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid request body"})
 	}
 
-	if err := utils.ValidateStruct(updateData); err != nil {
+	if err := utils.ValidateStruct(editTenderRequest); err != nil {
 		h.logger.Error("Validation error", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
 	}
 
-	updatedTender, err := h.tenderService.EditTender(ctx, tenderID, username, updateData)
+	updatedTender, err := h.tenderService.EditTender(ctx, editTenderRequest.TenderID, editTenderRequest.Username, editTenderRequest.UpdateData)
 	if err != nil {
 		h.logger.Error("Error updating tender", "error", err)
 	}
@@ -162,19 +173,22 @@ func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
 
 func (h *tenderHandler) RollbackTender(c *fiber.Ctx) error {
 	ctx := c.Context()
-	tenderID := c.Params("tenderId")
-	versionStr := c.Params("version")
-	version, err := strconv.Atoi(versionStr)
+	rollbackTenderRequest := new(model.RollbackTenderRequest)
+
+	rollbackTenderRequest.TenderID = c.Params("tenderId")
+	rollbackTenderRequest.Version = c.Params("version")
+
+	if err := utils.ValidateStruct(rollbackTenderRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	version, err := strconv.Atoi(rollbackTenderRequest.Version)
 	if err != nil {
 		h.logger.Error("Error converting version to int", "error", err)
 	}
 
-	if version <= 0 {
-		h.logger.Error("Invalid version", "version", version)
-		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid version"})
-	}
-	fmt.Println(version)
-	_, err = h.tenderService.RollbackTenderVersion(ctx, tenderID, version)
+	_, err = h.tenderService.RollbackTenderVersion(ctx, rollbackTenderRequest.TenderID, version)
 	if err != nil {
 		h.logger.Error("Error rolling back tender", "error", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error rolling back tender"})
