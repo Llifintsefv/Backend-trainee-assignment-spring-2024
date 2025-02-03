@@ -15,6 +15,7 @@ type BidService interface {
 	CreateBid(ctx context.Context, bid *model.CreateBidRequest) (*model.Bid, error)
 	GetCurrentUserBids(ctx context.Context, limit int, offset int, username string) ([]model.Bid, error)
 	GetTenderBids(ctx context.Context, tenderID string, limit int, offset int, username string) ([]model.Bid, error)
+	GetBidStatus(ctx context.Context, bidID string, username string) (model.BidStatus, error)
 }
 
 type bidService struct {
@@ -109,4 +110,20 @@ func (s *bidService) GetTenderBids(ctx context.Context, tenderID string, limit i
 		return nil, fmt.Errorf("Error getting bids, %w", err)
 	}
 	return bids, nil
+}
+
+func (s *bidService) GetBidStatus(ctx context.Context, bidID string, username string) (model.BidStatus, error) {
+
+	_, err := s.BidRepository.GetBidByUsername(ctx, 5,0,username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
+		return "", fmt.Errorf("Error getting bid, %w", err)
+	}
+
+	status, err := s.BidRepository.GetBidStatus(ctx, bidID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting bid status", slog.Any("error", err))
+		return "", fmt.Errorf("Error getting bid status, %w", err)
+	}
+	return status, nil
 }

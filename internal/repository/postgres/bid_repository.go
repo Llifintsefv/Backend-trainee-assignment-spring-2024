@@ -120,3 +120,27 @@ func (r *bidRepository) GetTenderBids(ctx context.Context, tenderID string, limi
 
 	return bids, nil
 }
+
+func (r *bidRepository) GetBidStatus(ctx context.Context, bidID string) (model.BidStatus, error) {
+	stmt, err := r.db.PrepareContext(ctx, `
+		SELECT status
+		FROM bid
+		WHERE id = $1
+	`)
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	var status model.BidStatus
+	err = stmt.QueryRowContext(ctx, bidID).Scan(&status)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			r.logger.ErrorContext(ctx, "Error getting bid status", slog.Any("error", err))
+			return "", fmt.Errorf("failed to execute query: %w", err)
+		}
+		return "", err
+	}
+
+	return status, nil
+}

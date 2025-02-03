@@ -18,6 +18,7 @@ type BidHandler interface {
 	CreateBid(c *fiber.Ctx) error
 	GetCurrentUserBids(c *fiber.Ctx) error
 	GetTenderBids(c *fiber.Ctx) error
+	GetBidStatus(c *fiber.Ctx) error
 }
 
 func NewBidHandler(bidService service.BidService, logger *slog.Logger) BidHandler {
@@ -94,4 +95,24 @@ func (h *bidHandler) GetTenderBids(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bids"})
 	}
 	return c.Status(fiber.StatusOK).JSON(bids)
+}
+
+func (h *bidHandler) GetBidStatus(c *fiber.Ctx) error {
+	ctx := c.Context()
+	id := c.Params("bidId")
+	username := c.Query("username")
+
+	if username == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "username is required"})
+	}
+
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "bidId is required"})
+	}
+	status, err := h.service.GetBidStatus(ctx, id, username)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error getting bid status", slog.Any("error", err))
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error getting bid status"})
+	}
+	return c.Status(fiber.StatusOK).JSON(status)
 }

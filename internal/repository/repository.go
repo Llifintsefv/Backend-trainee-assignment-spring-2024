@@ -29,4 +29,5 @@ type BidRepository interface {
 	CreateBid(context.Context, *model.Bid) (*model.Bid, error)
 	GetBidByUsername(context.Context, int, int, string) ([]model.Bid, error)
 	GetTenderBids(context.Context, string, int, int, string) ([]model.Bid, error)
+	GetBidStatus(context.Context, string) (model.BidStatus, error)
 }
