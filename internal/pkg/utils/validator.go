@@ -7,7 +7,6 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-
 var ValidatorInstance = validator.New()
 
 func init() {
@@ -41,8 +40,6 @@ func init() {
 		}
 	})
 }
-
-
 
 func ValidateStruct(s interface{}) error {
 	err := ValidatorInstance.Struct(s)

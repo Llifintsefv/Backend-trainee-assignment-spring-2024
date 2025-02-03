@@ -338,6 +338,7 @@ func (r *tenderRepository) RollbackTenderVersion(ctx context.Context, tenderID s
 	}()
 
 	var historyTender model.Tender
+	fmt.Println(tenderID, version)
 	err = tx.QueryRowContext(ctx, `
 		SELECT tender_id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
 		FROM tender_history

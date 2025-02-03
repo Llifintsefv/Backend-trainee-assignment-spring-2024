@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 
@@ -12,14 +11,13 @@ import (
 type Config struct {
 	DBConnStr string
 	Port      string
-	SecretKey string
 }
 
-func NewConfig() (*Config,error) {
+func NewConfig() (*Config, error) {
 	err := godotenv.Load(".env")
 	if err != nil {
 		slog.Error("DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL_MODE must be set")
-        return nil, fmt.Errorf("missing required environment variables")
+		return nil, fmt.Errorf("missing required environment variables")
 	}
 	dbHost := os.Getenv("DB_HOST")
 	dbPort := os.Getenv("DB_PORT")
@@ -40,14 +38,8 @@ func NewConfig() (*Config,error) {
 		port = "8080"
 	}
 
-	secretKey := os.Getenv("SECRET_KEY")
-	if secretKey == "" {
-		log.Fatal("SECRET_KEY must be set")
-	}
-
 	return &Config{
 		DBConnStr: connStr,
 		Port:      port,
-		SecretKey: secretKey,
-	},nil
+	}, nil
 }

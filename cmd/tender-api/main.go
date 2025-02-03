@@ -66,8 +66,8 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
-	ctx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
 
 	if err := app.ShutdownWithContext(ctx); err != nil { 
 		slog.Error("Server forced to shutdown: ", "error", err)

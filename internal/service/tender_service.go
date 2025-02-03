@@ -150,16 +150,22 @@ func (s *tenderService) EditTender(ctx context.Context, id string, username stri
 		s.logger.ErrorContext(ctx, "User is not the creator of the tender", slog.Any("error", err))
 		return nil, err
 	}
-	if *updateData.Name != "" {
-		tender.Name = *updateData.Name
+		if updateData.Name != nil { 
+		if *updateData.Name != "" { 
+			tender.Name = *updateData.Name
+		}
 	}
 
-	if *updateData.Description != "" {
-		tender.Description = *updateData.Description
+	if updateData.Description != nil { 
+		if *updateData.Description != "" {
+			tender.Description = *updateData.Description
+		}
 	}
 
-	if *updateData.ServiceType != "" {
-		tender.ServiceType = model.TenderServiceType(*updateData.ServiceType)
+	if updateData.ServiceType != nil { 
+		if *updateData.ServiceType != "" { 
+			tender.ServiceType = model.TenderServiceType(*updateData.ServiceType)
+		}
 	}
 
 	tender, err = s.TenderRepository.UpdateTender(ctx, tender)

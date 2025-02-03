@@ -4,7 +4,9 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/model"
 	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
+	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -161,11 +163,21 @@ func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
 func (h *tenderHandler) RollbackTender(c *fiber.Ctx) error {
 	ctx := c.Context()
 	tenderID := c.Params("tenderId")
-	version := c.QueryInt("version")
+	versionStr := c.Params("version")
+	version, err := strconv.Atoi(versionStr)
+	if err != nil {
+		h.logger.Error("Error converting version to int", "error", err)
+	}
 
-	_, err := h.tenderService.RollbackTenderVersion(ctx, tenderID, version)
+	if version <= 0 {
+		h.logger.Error("Invalid version", "version", version)
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid version"})
+	}
+	fmt.Println(version)
+	_, err = h.tenderService.RollbackTenderVersion(ctx, tenderID, version)
 	if err != nil {
 		h.logger.Error("Error rolling back tender", "error", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error rolling back tender"})
 	}
 	return c.Status(fiber.StatusOK).JSON(model.ErrorResponse{Reason: "Tender rollbacked successfully"})
 }
