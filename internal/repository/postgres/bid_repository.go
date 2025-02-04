@@ -279,3 +279,92 @@ func (r *bidRepository) UpdateBid(ctx context.Context, bid *model.Bid) (*model.B
 
 	return updatedBid, nil
 }
+
+func (r *bidRepository) RollbackBidVersion(ctx context.Context, bidID string, version int) (*model.Bid, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			if err != sql.ErrTxDone && err != sql.ErrConnDone {
+				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+			}
+		}
+	}()
+
+	var historyBid model.Bid
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, name, description, status, tender_id, author_type, 
+			author_id, creator_username, version, created_at, updated_at
+		FROM bid_history
+		WHERE bid_id = $1 AND version = $2
+	`, bidID, version).Scan(
+		&historyBid.ID,
+		&historyBid.Name,
+		&historyBid.Description,
+		&historyBid.Status,
+		&historyBid.TenderID,
+		&historyBid.AuthorType,
+		&historyBid.AuthorID,
+		&historyBid.CreatorUsername,
+		&historyBid.Version,
+		&historyBid.CreatedAt,
+		&historyBid.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query bid history: %w", err)
+	}
+
+	stmt, err := tx.PrepareContext(ctx, `
+		UPDATE bid
+		SET name = $1, description = $2, status = $3, tender_id = $4, 
+			author_type = $5, author_id = $6, creator_username = $7, 
+			version = $8, created_at = $9, updated_at = $10
+		WHERE id = $11
+		RETURNING id, name, description, status, tender_id, author_type, 
+			author_id, creator_username, version, created_at, updated_at
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare update statement: %w", err)
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRowContext(ctx,
+		historyBid.Name,
+		historyBid.Description,
+		historyBid.Status,
+		historyBid.TenderID,
+		historyBid.AuthorType,
+		historyBid.AuthorID,
+		historyBid.CreatorUsername,
+		historyBid.Version,
+		historyBid.CreatedAt,
+		time.Now(),
+		bidID,
+	)
+
+	var updatedBid model.Bid
+	err = row.Scan(
+		&updatedBid.ID,
+		&updatedBid.Name,
+		&updatedBid.Description,
+		&updatedBid.Status,
+		&updatedBid.TenderID,
+		&updatedBid.AuthorType,
+		&updatedBid.AuthorID,
+		&updatedBid.CreatorUsername,
+		&updatedBid.Version,
+		&updatedBid.CreatedAt,
+		&updatedBid.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update bid: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return &updatedBid, nil
+}

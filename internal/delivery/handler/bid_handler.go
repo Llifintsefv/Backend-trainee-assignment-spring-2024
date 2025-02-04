@@ -6,6 +6,7 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/service"
 	"errors"
 	"log/slog"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -22,6 +23,7 @@ type BidHandler interface {
 	GetBidStatus(c *fiber.Ctx) error
 	UpdateBidStatus(c *fiber.Ctx) error
 	EditBid(c *fiber.Ctx) error
+	RollbackBidVersion(c *fiber.Ctx) error
 }
 
 func NewBidHandler(bidService service.BidService, logger *slog.Logger) BidHandler {
@@ -208,5 +210,42 @@ func (h *bidHandler) EditBid(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error editing bid"})
 	}
+	return c.Status(fiber.StatusOK).JSON(bid)
+}
+
+func (h *bidHandler) RollbackBidVersion(c *fiber.Ctx) error {
+	ctx := c.Context()
+	rollbackBidRequest := new(model.RollbackBidRequest)
+
+	rollbackBidRequest.BidID = c.Params("bidId")
+	rollbackBidRequest.Version = c.Params("version")
+
+	if err := c.QueryParser(rollbackBidRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
+
+	if err := utils.ValidateStruct(rollbackBidRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	version, err := strconv.Atoi(rollbackBidRequest.Version)
+	if err != nil {
+		h.logger.Error("Error converting version to int", "error", err)
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid version parameter"})
+	}
+
+	bid, err := h.service.RollbackBidVersion(ctx, rollbackBidRequest.BidID, rollbackBidRequest.Username, version)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error rolling back bid", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+	}
+
 	return c.Status(fiber.StatusOK).JSON(bid)
 }

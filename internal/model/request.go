@@ -76,3 +76,9 @@ type EditBidRequest struct {
 	Username   string     `query:"username" validate:"required"`
 	UpdateData UpdateData `json:"updateData" validate:"required"`
 }
+
+type RollbackBidRequest struct {
+	BidID    string `params:"bidId" validate:"required"`
+	Version  string `params:"version" validate:"required,number,min=1"`
+	Username string `query:"username" validate:"required"`
+}

@@ -19,6 +19,7 @@ type BidService interface {
 	GetBidStatus(ctx context.Context, bidID string, username string) (model.BidStatus, error)
 	UpdateBidStatus(ctx context.Context, bidID string, username string, status string) (model.BidStatus, error)
 	EditBid(ctx context.Context, bidID string, username string, updateData model.UpdateData) (*model.Bid, error)
+	RollbackBidVersion(ctx context.Context, bidID string, username string, version int) (*model.Bid, error)
 }
 
 type bidService struct {
@@ -241,6 +242,38 @@ func (s *bidService) EditBid(ctx context.Context, bidID string, username string,
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error updating bid", slog.Any("error", err))
 		return nil, fmt.Errorf("Error updating bid, %w", err)
+	}
+	return bid, nil
+}
+
+func (s *bidService) RollbackBidVersion(ctx context.Context, bidID string, username string, version int) (*model.Bid, error) {
+	_, err := s.userRepository.GetUserByUsername(ctx, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, model.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("Error getting user: %w", err)
+	}
+
+	bid, err := s.BidRepository.GetBidById(ctx, bidID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
+		if errors.Is(err, model.ErrBidNotFound) {
+			return nil, model.ErrBidNotFound
+		}
+		return nil, fmt.Errorf("Error getting bid, %w", err)
+	}
+
+	if bid.CreatorUsername != username {
+		s.logger.ErrorContext(ctx, "User is not responsible for bid", slog.Any("error", err))
+		return nil, model.ErrForbidden
+	}
+
+	bid, err = s.BidRepository.RollbackBidVersion(ctx, bidID, version)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error rolling back bid version", slog.Any("error", err))
+		return nil, fmt.Errorf("Error rolling back bid version, %w", err)
 	}
 	return bid, nil
 }

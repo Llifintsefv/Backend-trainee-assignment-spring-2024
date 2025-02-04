@@ -33,4 +33,5 @@ type BidRepository interface {
 	GetTenderBids(context.Context, string, int, int, string) ([]model.Bid, error)
 	GetBidStatus(context.Context, string) (model.BidStatus, error)
 	UpdateBid(context.Context, *model.Bid) (*model.Bid, error)
+	RollbackBidVersion(context.Context, string, int) (*model.Bid, error)
 }

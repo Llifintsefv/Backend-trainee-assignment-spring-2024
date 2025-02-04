@@ -28,6 +28,7 @@ func SetupRouter(tenderHandler handler.TenderHandler, pingHandler handler.PingHa
 	api.Get("/bids/:bidId/status", bidHandler.GetBidStatus)
 	api.Put("/bids/:bidId/status", bidHandler.UpdateBidStatus)
 	api.Patch("/bids/:bidId/edit", bidHandler.EditBid)
+	api.Put("/bids/:bidId/rollback/:version", bidHandler.RollbackBidVersion)
 
 	return app
 }
