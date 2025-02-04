@@ -21,6 +21,7 @@ type BidHandler interface {
 	GetTenderBids(c *fiber.Ctx) error
 	GetBidStatus(c *fiber.Ctx) error
 	UpdateBidStatus(c *fiber.Ctx) error
+	EditBid(c *fiber.Ctx) error
 }
 
 func NewBidHandler(bidService service.BidService, logger *slog.Logger) BidHandler {
@@ -170,4 +171,42 @@ func (h *bidHandler) UpdateBidStatus(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error updating bid status"})
 	}
 	return c.Status(fiber.StatusOK).JSON(status)
+}
+
+func (h *bidHandler) EditBid(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	editBidRequest := new(model.EditBidRequest)
+	editBidRequest.BidID = c.Params("bidId")
+
+	if err := c.QueryParser(editBidRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
+
+	if err := c.BodyParser(&editBidRequest.UpdateData); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing request body", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid request body"})
+	}
+
+	if err := utils.ValidateStruct(editBidRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	bid, err := h.service.EditBid(ctx, editBidRequest.BidID, editBidRequest.Username, editBidRequest.UpdateData)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error editing bid", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrBidNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error editing bid"})
+	}
+	return c.Status(fiber.StatusOK).JSON(bid)
 }

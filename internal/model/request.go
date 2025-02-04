@@ -70,3 +70,9 @@ type UpdateBidStatusRequest struct {
 	Username string    `query:"username" validate:"required"`
 	Status   BidStatus `query:"status" validate:"required,bidstatus"`
 }
+
+type EditBidRequest struct {
+	BidID      string     `params:"bidId" validate:"required"`
+	Username   string     `query:"username" validate:"required"`
+	UpdateData UpdateData `json:"updateData" validate:"required"`
+}

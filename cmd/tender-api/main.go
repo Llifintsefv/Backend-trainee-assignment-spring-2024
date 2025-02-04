@@ -55,7 +55,8 @@ func main() {
 
 	go func() {
 		if err := app.Listen(cfg.Port); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			slog.Error("failed to start server", "error", err)
+			os.Exit(1)
 		}
 	}()
 

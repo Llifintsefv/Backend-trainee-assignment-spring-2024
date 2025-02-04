@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type bidRepository struct {
@@ -181,20 +183,37 @@ func (r *bidRepository) GetBidStatus(ctx context.Context, bidID string) (model.B
 }
 
 func (r *bidRepository) UpdateBid(ctx context.Context, bid *model.Bid) (*model.Bid, error) {
-	stmt, err := r.db.PrepareContext(ctx, `
-		UPDATE bid
-		SET name = $1, description = $2, status = $3, tender_id = $4, author_type = $5, author_id = $6, creator_username = $7, version = $8, created_at = $9, updated_at = $10
-		WHERE id = $11
-		RETURNING id, name, description, status, tender_id, author_type, author_id, creator_username, version, created_at, updated_at
-	`)
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer stmt.Close()
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			if err != sql.ErrTxDone && err != sql.ErrConnDone {
+				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+			}
+		}
+	}()
 
+	oldVersion := bid.Version
 	bid.Version++
 	bid.UpdatedAt = time.Now()
 
+	stmt, err := tx.PrepareContext(ctx, `
+        UPDATE bid 
+        SET name = $1, description = $2, status = $3, tender_id = $4, 
+            author_type = $5, author_id = $6, creator_username = $7, 
+            version = $8, created_at = $9, updated_at = $10 
+        WHERE id = $11
+        RETURNING id, name, description, status, tender_id, author_type, 
+            author_id, creator_username, version, created_at, updated_at
+    `)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare update statement: %w", err)
+	}
+	defer stmt.Close()
+
+	updatedBid := new(model.Bid)
 	err = stmt.QueryRowContext(ctx,
 		bid.Name,
 		bid.Description,
@@ -208,21 +227,55 @@ func (r *bidRepository) UpdateBid(ctx context.Context, bid *model.Bid) (*model.B
 		bid.UpdatedAt,
 		bid.ID,
 	).Scan(
-		&bid.ID,
-		&bid.Name,
-		&bid.Description,
-		&bid.Status,
-		&bid.TenderID,
-		&bid.AuthorType,
-		&bid.AuthorID,
-		&bid.CreatorUsername,
-		&bid.Version,
-		&bid.CreatedAt,
-		&bid.UpdatedAt,
+		&updatedBid.ID,
+		&updatedBid.Name,
+		&updatedBid.Description,
+		&updatedBid.Status,
+		&updatedBid.TenderID,
+		&updatedBid.AuthorType,
+		&updatedBid.AuthorID,
+		&updatedBid.CreatorUsername,
+		&updatedBid.Version,
+		&updatedBid.CreatedAt,
+		&updatedBid.UpdatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, fmt.Errorf("failed to update bid: %w", err)
 	}
 
-	return bid, nil
+	historyStmt, err := tx.PrepareContext(ctx, `
+        INSERT INTO bid_history (
+            id, bid_id, name, description, status, tender_id, 
+            author_type, author_id, creator_username, 
+            version, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    `)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare history statement: %w", err)
+	}
+	defer historyStmt.Close()
+
+	_, err = historyStmt.ExecContext(ctx,
+		uuid.New().String(),
+		bid.ID,
+		bid.Name,
+		bid.Description,
+		bid.Status,
+		bid.TenderID,
+		bid.AuthorType,
+		bid.AuthorID,
+		bid.CreatorUsername,
+		oldVersion,
+		bid.CreatedAt,
+		time.Now(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert bid history: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return updatedBid, nil
 }

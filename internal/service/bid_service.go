@@ -18,6 +18,7 @@ type BidService interface {
 	GetTenderBids(ctx context.Context, tenderID string, limit int, offset int, username string) ([]model.Bid, error)
 	GetBidStatus(ctx context.Context, bidID string, username string) (model.BidStatus, error)
 	UpdateBidStatus(ctx context.Context, bidID string, username string, status string) (model.BidStatus, error)
+	EditBid(ctx context.Context, bidID string, username string, updateData model.UpdateData) (*model.Bid, error)
 }
 
 type bidService struct {
@@ -198,4 +199,48 @@ func (s *bidService) UpdateBidStatus(ctx context.Context, bidID string, username
 	}
 	return bid.Status, nil
 
+}
+
+func (s *bidService) EditBid(ctx context.Context, bidID string, username string, updateData model.UpdateData) (*model.Bid, error) {
+	_, err := s.userRepository.GetUserByUsername(ctx, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, model.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("Error getting user: %w", err)
+	}
+
+	bid, err := s.BidRepository.GetBidById(ctx, bidID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
+		if errors.Is(err, model.ErrBidNotFound) {
+			return nil, model.ErrBidNotFound
+		}
+		return nil, fmt.Errorf("Error getting bid, %w", err)
+	}
+
+	if bid.CreatorUsername != username {
+		s.logger.ErrorContext(ctx, "User is not responsible for bid", slog.Any("error", err))
+		return nil, model.ErrForbidden
+	}
+
+	if updateData.Name != nil {
+		if *updateData.Name != "" {
+			bid.Name = *updateData.Name
+		}
+	}
+
+	if updateData.Description != nil {
+		if *updateData.Description != "" {
+			bid.Description = *updateData.Description
+		}
+	}
+
+	bid, err = s.BidRepository.UpdateBid(ctx, bid)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error updating bid", slog.Any("error", err))
+		return nil, fmt.Errorf("Error updating bid, %w", err)
+	}
+	return bid, nil
 }

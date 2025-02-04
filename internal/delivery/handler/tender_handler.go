@@ -5,6 +5,7 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/pkg/utils"
 	"Backend-trainee-assignment-autumn-2024/internal/service"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strconv"
 
@@ -182,6 +183,8 @@ func (h *tenderHandler) EditTender(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid request body"})
 	}
 
+	fmt.Println(editTenderRequest.UpdateData)
+	fmt.Println(editTenderRequest)
 	if err := utils.ValidateStruct(editTenderRequest); err != nil {
 		h.logger.Error("Validation error", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
