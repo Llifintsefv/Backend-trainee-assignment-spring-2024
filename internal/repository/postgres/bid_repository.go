@@ -29,7 +29,13 @@ func (r *bidRepository) CreateBid(ctx context.Context, bidRequest *model.Bid) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			if err != sql.ErrTxDone && err != sql.ErrConnDone {
+				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+			}
+		}
+	}()
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO bid (id, name, description, status, tender_id, author_type, author_id, creator_username, version, created_at, updated_at)

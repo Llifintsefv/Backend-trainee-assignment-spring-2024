@@ -23,6 +23,7 @@ type BidHandler interface {
 	GetBidStatus(c *fiber.Ctx) error
 	UpdateBidStatus(c *fiber.Ctx) error
 	EditBid(c *fiber.Ctx) error
+	SubmitBidDecision(c *fiber.Ctx) error
 	RollbackBidVersion(c *fiber.Ctx) error
 }
 
@@ -247,5 +248,41 @@ func (h *bidHandler) RollbackBidVersion(c *fiber.Ctx) error {
 		}
 	}
 
+	return c.Status(fiber.StatusOK).JSON(bid)
+}
+
+func (h *bidHandler) SubmitBidDecision(c *fiber.Ctx) error {
+	ctx := c.Context()
+	submitBidDecisionRequest := new(model.SubmitBidDecisionRequest)
+
+	submitBidDecisionRequest.BidID = c.Params("bidId")
+
+	if err := c.QueryParser(submitBidDecisionRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
+
+	if err := utils.ValidateStruct(submitBidDecisionRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	bid, err := h.service.SubmitBidDecision(ctx, submitBidDecisionRequest.BidID, submitBidDecisionRequest.Username, string(submitBidDecisionRequest.Decision))
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error submitting bid decision", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrBidNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrDecisionSubmit) {
+			return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error submitting bid decision"})
+	}
 	return c.Status(fiber.StatusOK).JSON(bid)
 }

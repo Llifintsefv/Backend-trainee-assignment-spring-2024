@@ -47,6 +47,13 @@ type UpdateData struct {
 	ServiceType *string `json:"serviceType" validate:"omitempty,servicetype"`
 }
 
+type BidDecision string
+
+const (
+	BidDecisionApproved BidDecision = "Approved"
+	BidDecisionRejected BidDecision = "Rejected"
+)
+
 type GetCurrentUserBidsRequest struct {
 	Limit    int    `query:"limit" validate:"min=1,max=100"`
 	Offset   int    `query:"offset" validate:"min=0"`
@@ -81,4 +88,10 @@ type RollbackBidRequest struct {
 	BidID    string `params:"bidId" validate:"required"`
 	Version  string `params:"version" validate:"required,number,min=1"`
 	Username string `query:"username" validate:"required"`
+}
+
+type SubmitBidDecisionRequest struct {
+	BidID    string      `params:"bidId" validate:"required"`
+	Username string      `query:"username" validate:"required"`
+	Decision BidDecision `query:"decision" validate:"required,oneof=Approved Rejected"`
 }

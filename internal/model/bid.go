@@ -22,6 +22,8 @@ const (
 )
 
 
+
+
 type CreateBidRequest struct {
 	Name          string      `json:"name" validate:"required,max=255"` 
 	Description   string      `json:"description" validate:"required,max=1000"` 
