@@ -30,7 +30,7 @@ func SetupRouter(tenderHandler handler.TenderHandler, pingHandler handler.PingHa
 	api.Patch("/bids/:bidId/edit", bidHandler.EditBid)
 	api.Put("/bids/:bidId/submit_decision", bidHandler.SubmitBidDecision)
 	api.Put("/bids/:bidId/rollback/:version", bidHandler.RollbackBidVersion)
-	
+	api.Put("bids/:bidId/feedback", bidHandler.AddBidFeedback)
 
 	return app
 }

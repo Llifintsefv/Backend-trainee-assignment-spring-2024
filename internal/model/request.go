@@ -95,3 +95,9 @@ type SubmitBidDecisionRequest struct {
 	Username string      `query:"username" validate:"required"`
 	Decision BidDecision `query:"decision" validate:"required,oneof=Approved Rejected"`
 }
+
+type AddBidFeedbackRequest struct {
+	BidID    string `params:"bidId" validate:"required"`
+	Username string `query:"username" validate:"required"`
+	Feedback string `query:"feedback" validate:"required,max=1000"`
+}

@@ -374,3 +374,53 @@ func (r *bidRepository) RollbackBidVersion(ctx context.Context, bidID string, ve
 
 	return &updatedBid, nil
 }
+
+func (r *bidRepository) AddBidFeedback(ctx context.Context, bidID string, username string, review string) (*model.Bid, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			if err != sql.ErrTxDone && err != sql.ErrConnDone {
+				r.logger.ErrorContext(ctx, "Error rolling back transaction", slog.Any("error", err))
+			}
+		}
+	}()
+
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO bid_feedback (id, bid_id, username, review, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, uuid.New().String(), bidID, username, review, time.Now(), time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert bid feedback: %w", err)
+	}
+
+	stmt, err = tx.PrepareContext(ctx, `
+		UPDATE bid
+		SET version = version + 1
+		WHERE id = $1
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, bidID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update bid version: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return r.GetBidById(ctx, bidID)
+
+}

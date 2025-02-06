@@ -24,6 +24,7 @@ type BidHandler interface {
 	UpdateBidStatus(c *fiber.Ctx) error
 	EditBid(c *fiber.Ctx) error
 	SubmitBidDecision(c *fiber.Ctx) error
+	AddBidFeedback(c *fiber.Ctx) error
 	RollbackBidVersion(c *fiber.Ctx) error
 }
 
@@ -285,4 +286,38 @@ func (h *bidHandler) SubmitBidDecision(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error submitting bid decision"})
 	}
 	return c.Status(fiber.StatusOK).JSON(bid)
+}
+
+
+func (h *bidHandler) AddBidFeedback(c *fiber.Ctx) error{
+	ctx := c.Context()
+	addBidFeedbackRequest := new(model.AddBidFeedbackRequest)
+	addBidFeedbackRequest.BidID = c.Params("bidId")
+
+	if err := c.QueryParser(addBidFeedbackRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Error parsing query parameters", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: "Invalid query parameters"})
+	}
+	
+	if err := utils.ValidateStruct(addBidFeedbackRequest); err != nil {
+		h.logger.ErrorContext(ctx, "Validation error", slog.Any("error", err))
+		return c.Status(fiber.StatusBadRequest).JSON(model.ErrorResponse{Reason: err.Error()})
+	}
+
+	bid,err := h.service.AddBidFeedback(ctx, addBidFeedbackRequest.BidID, addBidFeedbackRequest.Username, addBidFeedbackRequest.Feedback)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error adding bid feedback", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return c.Status(fiber.StatusUnauthorized).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrForbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		if errors.Is(err, model.ErrBidNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(model.ErrorResponse{Reason: err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(model.ErrorResponse{Reason: "Error adding bid feedback"})
+	}
+	return c.Status(fiber.StatusOK).JSON(bid)
+
 }

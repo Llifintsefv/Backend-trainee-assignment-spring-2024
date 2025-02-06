@@ -20,6 +20,7 @@ type BidService interface {
 	UpdateBidStatus(ctx context.Context, bidID string, username string, status string) (model.BidStatus, error)
 	EditBid(ctx context.Context, bidID string, username string, updateData model.UpdateData) (*model.Bid, error)
 	SubmitBidDecision(ctx context.Context, bidID string, username string, decision string) (*model.Bid, error)
+	AddBidFeedback(ctx context.Context, bidID string, username string, review string) (*model.Bid, error)
 	RollbackBidVersion(ctx context.Context, bidID string, username string, version int) (*model.Bid, error)
 }
 
@@ -342,6 +343,34 @@ func (s *bidService) SubmitBidDecision(ctx context.Context, bidID string, userna
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Error updating bid status on decision", slog.Any("error", err))
 		return nil, fmt.Errorf("Error updating bid status on decision: %w", err)
+	}
+
+	return updatedBid, nil
+}
+
+func (s *bidService) AddBidFeedback(ctx context.Context, bidID string, username string, review string) (*model.Bid, error) {
+	_, err := s.userRepository.GetUserByUsername(ctx, username)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting user", slog.Any("error", err))
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, model.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("Error getting user: %w", err)
+	}
+
+	_, err = s.BidRepository.GetBidById(ctx, bidID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error getting bid", slog.Any("error", err))
+		if errors.Is(err, model.ErrBidNotFound) {
+			return nil, model.ErrBidNotFound
+		}
+		return nil, fmt.Errorf("Error getting bid, %w", err)
+	}
+
+	updatedBid, err := s.BidRepository.AddBidFeedback(ctx, bidID, username, review)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Error adding bid feedback", slog.Any("error", err))
+		return nil, fmt.Errorf("Error adding bid feedback: %w", err)
 	}
 
 	return updatedBid, nil
