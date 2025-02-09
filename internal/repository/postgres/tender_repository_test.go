@@ -5,6 +5,7 @@ import (
 	"Backend-trainee-assignment-autumn-2024/internal/repository"
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"regexp"
 	"testing"
@@ -40,7 +41,7 @@ func TestCreateTender(t *testing.T) {
 			ServiceType:     "Test Service",
 			OrganizationID:  uuid.New().String(),
 			CreatorUsername: "testuser",
-			Status:          "draft",
+			Status:          "test",
 			Version:         1,
 		}
 
@@ -60,32 +61,75 @@ func TestCreateTender(t *testing.T) {
 			tender.Version,
 		).WillReturnRows(sqlmock.NewRows([]string{
 			"id", "name", "description", "service_type", "organization_id", "creator_username", "status", "version", "created_at", "updated_at"}).
-			AddRow(tender.ID, tender.Name, tender.Description, tender.ServiceType, tender.OrganizationID, tender.CreatorUsername, tender.Status, tender.Version, time.Now(), time.Now(),
-		))
-		
+			AddRow(tender.ID, tender.Name, tender.Description, tender.ServiceType, tender.OrganizationID, tender.CreatorUsername, tender.Status, tender.Version, time.Now(), time.Now()))
+
 		mock.ExpectCommit()
 
-		createdTender,err := repo.CreateTender(context.Background(),&tender)
+		createdTender, err := repo.CreateTender(context.Background(), &tender)
 
-		assert.NoError(t,err)
-		assert.NotNil(t,createdTender)
-		assert.Equal(t,tender.Name,createdTender.Name)
-		assert.NotEmpty(t,createdTender.UpdatedAt)
-		assert.NotEmpty(t,createdTender.CreatedAt)
+		assert.NoError(t, err)
+		assert.NotNil(t, createdTender)
+		assert.Equal(t, tender.Name, createdTender.Name)
+		assert.NotEmpty(t, createdTender.UpdatedAt)
+		assert.NotEmpty(t, createdTender.CreatedAt)
 
-		if err := mock.ExpectationsWereMet();err != nil {
+		if err := mock.ExpectationsWereMet(); err != nil {
 			t.Errorf("there were unfulfilled expectations: %s", err)
 		}
 
-		
 	})
 
 	t.Run("data base error", func(t *testing.T) {
+		db, mock, repo := setupTest(t)
+		defer db.Close()
+		tender := &model.Tender{ID: uuid.New().String(), Name: "Test Tender"}
 
+		mock.ExpectBegin().WillReturnError(errors.New("begin transaction error"))
+
+		_, err := repo.CreateTender(context.Background(), tender)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "failed to begin transaction: begin transaction error")
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
 	})
 
-	t.Run("scan error", func(t *testing.T) {
+	t.Run("prepare statement error", func(t *testing.T) {
+		db, mock, repo := setupTest(t)
+		defer db.Close()
+		tender := &model.Tender{ID: uuid.New().String(), Name: "Test Tender"}
 
+		mock.ExpectBegin()
+		mock.ExpectPrepare(regexp.QuoteMeta(`INSERT INTO tender`)).WillReturnError(errors.New("prepare statement error"))
+		mock.ExpectRollback()
+
+		_, err := repo.CreateTender(context.Background(), tender)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "failed to prepare statement for creating tender: prepare statement error")
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+
+	t.Run("query error", func(t *testing.T) {
+		db, mock, repo := setupTest(t)
+		defer db.Close()
+
+		tender := &model.Tender{ID: uuid.New().String(), Name: "Test Tender"}
+
+		mock.ExpectBegin()
+		mock.ExpectPrepare(regexp.QuoteMeta(`INSERT INTO tender`)).
+			ExpectQuery().
+			WillReturnError(errors.New("query error"))
+		mock.ExpectRollback()
+
+		_, err := repo.CreateTender(context.Background(), tender)
+		assert.Error(t, err)
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
 	})
 
 }
