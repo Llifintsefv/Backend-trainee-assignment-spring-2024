@@ -313,3 +313,75 @@ func TestGetTenders(t *testing.T) {
 		}
 	})
 }
+
+func TestGetTenderById(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		db, mock, repo := setupTest(t)
+		defer db.Close()
+
+		id := "test"
+		ctx := context.Background()
+
+		expectQuery := mock.ExpectPrepare(regexp.QuoteMeta(`SELECT id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
+		FROM tender
+		WHERE id = $1`))
+
+		expectQuery.ExpectQuery().WithArgs(id).WillReturnRows(sqlmock.NewRows([]string{
+			"id", "name", "description", "service_type", "organization_id", "creator_username", "status", "version", "created_at", "updated_at",
+		}).AddRow(
+			"id", "Test Tender", "Description", "Construction", "123", "user1", "Active", 1, time.Now(), time.Now()))
+
+		tender, err := repo.GetTenderById(ctx, id)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, tender)
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+
+	t.Run("not_found", func(t *testing.T) {
+		db, mock, repo := setupTest(t)
+		defer db.Close()
+
+		id := "test"
+		ctx := context.Background()
+
+		expectQuery := mock.ExpectPrepare(regexp.QuoteMeta(`SELECT id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
+		FROM tender
+		WHERE id = $1`))
+
+		expectQuery.ExpectQuery().WithArgs(id).WillReturnError(sql.ErrNoRows)
+		tender, err := repo.GetTenderById(ctx, id)
+
+		assert.Error(t, err)
+		assert.Nil(t, tender)
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+
+	t.Run("prepare_statement_error", func(t *testing.T) {
+		db, mock, repo := setupTest(t)
+		defer db.Close()
+
+		id := "test"
+		ctx := context.Background()
+
+		expectQuery := mock.ExpectPrepare(regexp.QuoteMeta(`SELECT id, name, description, service_type, organization_id, creator_username, status, version, created_at, updated_at
+		FROM tender
+		WHERE id = $1`))
+
+		expectQuery.ExpectQuery().WithArgs(id).WillReturnError(sql.ErrConnDone)
+		tender, err := repo.GetTenderById(ctx, id)
+
+		assert.Error(t, err)
+		assert.Nil(t, tender)
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+}
