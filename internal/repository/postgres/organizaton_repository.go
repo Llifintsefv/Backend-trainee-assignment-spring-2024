@@ -36,7 +36,7 @@ func (r *organizationRepository) GetOrganizationById(ctx context.Context, id str
 		&organization.Name,
 		&organization.Description,
 		&organization.Type,
-		&organization.Created_at,	
+		&organization.Created_at,
 		&organization.Updated_at,
 	)
 	if err != nil {
@@ -44,7 +44,7 @@ func (r *organizationRepository) GetOrganizationById(ctx context.Context, id str
 			r.logger.ErrorContext(ctx, "Error getting organization by id", slog.Any("error", err))
 			return nil, fmt.Errorf("failed to execute query for getting organization by id: %w", err)
 		}
-		return nil, nil
+		return nil, model.ErrOrganizationNotFound
 	}
 
 	return &organization, nil
