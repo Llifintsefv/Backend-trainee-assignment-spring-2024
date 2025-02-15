@@ -36,7 +36,7 @@ func (r *userRepository) GetUserById(ctx context.Context, id string) (*model.Use
 	user := model.User{}
 	err = stmt.QueryRowContext(ctx, id).Scan(
 		&user.Id,
-		&user.Username,	
+		&user.Username,
 		&user.First_name,
 		&user.Last_name,
 		&user.Created_at,
@@ -68,7 +68,7 @@ func (r *userRepository) GetUserByUsername(ctx context.Context, username string)
 	user := model.User{}
 	err = stmt.QueryRowContext(ctx, username).Scan(
 		&user.Id,
-		&user.Username,	
+		&user.Username,
 		&user.First_name,
 		&user.Last_name,
 		&user.Created_at,
